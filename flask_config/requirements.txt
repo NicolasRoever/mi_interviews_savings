@@ -1,0 +1,8 @@
+Flask==3.0.3
+uWSGI==2.0.27			
+openai==1.55.3
+psycopg2-binary==2.9.10 	# For Postgres backend
+redis==5.2.1				# For Redis backend
+boto3==1.35.78				# For Dynamo backend
+pandas==2.2.3				# For sessions CSV logging
+locust==2.32.4 				# For Locust testing 

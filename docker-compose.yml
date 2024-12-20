@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: db
+    hostname: localhost
+    restart: always
+    volumes:
+      - .dbdata:/var/lib/postgresql/data
+    healthcheck:      
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -t 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-interviews}
+
+  app:
+    image: mcamacho10/qualitative-interviews:latest
+    depends_on:
+      db:
+        condition: service_healthy
+    container_name: app
+    ports: 
+      - ${PORT:-8000}:80
+    links: 
+      - db
+    build:
+      context: .
+      dockerfile: docker_config/Dockerfile
+    environment:
+      - DATABASE=POSTGRES
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-interviews}
+      - LOG_LEVEL=${LOG_LEVEL:-ERROR}   # Defaults to minimum logging at ERROR level
+      - OPENAI_API_KEY=$OPENAI_API_KEY  # Required environment variable
+
+volumes:
+  .dbdata:

@@ -1,0 +1,69 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: serverless-interviews
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 60       # 60 seconds
+    MemorySize: 128   # 128MB function memory
+    Runtime: python3.12
+    # You can add LoggingConfig parameters such as the Logformat, Log Group, and SystemLogLevel or ApplicationLogLevel. 
+    # Learn more here:
+    # https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html#sam-function-loggingconfig.
+    LoggingConfig:
+      LogFormat: JSON
+      SystemLogLevel: WARN          # Change as you see fit
+      ApplicationLogLevel: ERROR    # Change as you see fit
+    Architectures:
+      - arm64 
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"
+
+Resources:
+  InterviewFunction:
+    # More info about Function Resource: 
+    # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Type: AWS::Serverless::Function   
+    Properties:
+      CodeUri: ../app/
+      Handler: lambda.handler
+      Policies:
+        # Give your Lambda access to DynamoDB
+        - AmazonDynamoDBFullAccess
+      Events:
+        Interview:
+          # More info about API Event Source: 
+          # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Type: Api 
+          Properties:
+            Path: /
+            Method: post
+      Environment:
+        Variables:
+          DATABASE: DYNAMODB
+          DATABASE_URL: !Ref TableName  # Required connector to DynamoDB backend 
+          PORT: !Ref Port                    
+          OPENAI_API_KEY: !Ref OpenAIAPIKey   
+
+Parameters:
+  OpenAIAPIKey:
+    Description: Required OpenAI API key for GPT integration
+    Type: String
+  Port:
+    Description: Required for the Lambda Web Adapter
+    Type: String
+    Default: 8000
+  TableName:
+    Description: Required name of table which application will write to
+    Type: String
+    Default: INTERVIEWS
+
+
+Outputs:
+  InterviewApi:
+    Description: API Gateway endpoint URL for function
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
