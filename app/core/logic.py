@@ -1,10 +1,19 @@
 import logging
-from parameters import INTERVIEW_PARAMETERS
+import os
+from parameters import INTERVIEW_PARAMETERS, OPENAI_API_KEY
 from core.manager import InterviewManager
-from core.agent import Agent
-from database.manager import connect_to_database
+from core.agent import LLMAgent
 
-agent = Agent()
+def connect_to_database():
+    """ Instantiate specific backend database. """
+    if os.getenv("DATABASE") == "DYNAMODB":
+        # For AWS, leverage Dynamo database
+        from database.dynamo import DynamoDB
+        return DynamoDB(os.environ['DYNAMO_TABLE'])
+    from database.file import FileWriter
+    return FileWriter()
+
+agent = LLMAgent(OPENAI_API_KEY)
 db = connect_to_database()
 
 def load_interview_session(session_id:str) -> dict:
@@ -15,10 +24,10 @@ def delete_interview_session(session_id:str):
     """ Delete existing interview saved to database. """
     db.delete_remote_session(session_id)
 
-def resume_interview_session(session_id:str, user_message:str) -> InterviewManager:
+def resume_interview_session(session_id:str, interview_id:str, user_message:str) -> InterviewManager:
     """ Return InterviewManager object of existing session. """
     interview = InterviewManager(db, session_id)
-    interview.resume_session()
+    interview.resume_session(INTERVIEW_PARAMETERS[interview_id])
     logging.info("Generating next question for session '{}', user message '{}'".format(
         session_id, 
         user_message
@@ -32,20 +41,23 @@ def begin_interview_session(session_id:str, interview_id:str) -> dict:
     parameters = INTERVIEW_PARAMETERS[interview_id]
     interview = InterviewManager(db, session_id)
     interview.begin_session(parameters)
+    message = parameters['first_question']
+    interview.add_chat_to_session(message, type='question')
     logging.info("Beginning {} interview session '{}' with prompt '{}'".format(
         interview_id, 
         session_id, 
-        parameters['first_question']
+        message
     ))
-    return {'session_id':session_id, 'interview_id':interview_id, 'message':parameters['first_question']}
+    return {'session_id':session_id, 'interview_id':interview_id, 'message':message}
 
 def retrieve_sessions(sessions:list=None) -> dict:
     """ Return specified or all existing interview sessions. """
     return db.retrieve_sessions(sessions)
 
-def transcribe(**kwargs) -> dict:
+def transcribe(audio:str) -> dict:
     """ Return audio file transcription using OpenAI Whisper API """
-    transcription = agent.transcribe(**kwargs)
+    logging.critical(f"Audio is: {type(audio)}...")
+    transcription = agent.transcribe(audio)
     logging.info(f"Returning transcription text: '{transcription}'")
     return {'transcription':transcription}
 
@@ -61,10 +73,10 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
         response: (dict) containing `message` from interviewer
     """
 
-    # Resume if interview has started, else begin session
+    # Resume if interview has started, otherwise begin (new) session
     try:
-        interview = resume_interview_session(session_id, user_message)
-        parameters = interview.get_session_info('parameters')
+        interview = resume_interview_session(session_id, interview_id, user_message)
+        parameters = interview.parameters
     except AssertionError:
         return begin_interview_session(session_id, interview_id)
 
@@ -72,10 +84,13 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
     if interview.is_terminated():
         return {'session_id':session_id, 'message':parameters['termination_message']}
 
+    # Provide interview guidelines to LLM agent
+    agent.load_parameters(parameters)
+
     # Optional: Moderate interviewee responses, e.g. flagging off-topic or harmful messages
     if parameters.get('moderate_answers') and parameters.get('moderator'):
-        flagged = agent.review_answer(user_message, interview.get_session_info())
-        if not flagged or interview.repeated_messages(user_message):
+        on_topic = agent.review_answer(user_message, interview.get_history())
+        if not on_topic:
             interview.flag_risk(user_message)
 
         # Terminate if the conversation has been flagged too often
@@ -84,7 +99,7 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
             return {'session_id':session_id, 'message':parameters['flagged_message']}
 
         # If user message does not fit the interview context, give another chance
-        if not flagged:
+        if not on_topic: # but not flagged too often...
             interview.update_session() 
             return {'session_id':session_id, 'message':parameters['off_topic_message']}
 
@@ -93,7 +108,7 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
     Note this happens *after* security checks such that
     flagged messages are *not* added to interview history.
     """
-    interview.add_message(user_message, type="answer")
+    interview.add_chat_to_session(user_message, type="answer")
 
 
     ##### CONTINUE INTERVIEW BASED ON WORKFLOW #####
@@ -105,9 +120,9 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
     logging.info(f"On topic {current_topic_idx}/{num_topics}...")
 
     # Current question within topic guide
+    current_question_idx = interview.get_current_topic_question()
     num_questions = parameters['interview_plan'][current_topic_idx-1]['length']
-    current_question_idx = min(interview.get_current_topic_question(), num_questions)
-    on_last_question = current_question_idx == num_questions
+    on_last_question = current_question_idx >= num_questions
     logging.info(f"On question {current_question_idx}/{num_questions}...")
 
     # Continue in workflow
@@ -123,18 +138,17 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
 
     elif on_last_question:
         # Transition to *next* topic...
-        next_question, summary = agent.transition_topic(interview.get_session_info())
+        next_question, summary = agent.transition_topic(interview.get_history())
         interview.update_transition(summary)
 
     else:
         # Proceed *within* topic...
-        next_question = agent.probe_within_topic(interview.get_session_info())
+        next_question = agent.probe_within_topic(interview.get_history())
         interview.update_probe()
 
     # Update interview with new output
     logging.info(f"Interviewer responded: '{next_question}'")
-    interview.add_message(next_question, type="question")
-    interview.update_session()
+    interview.add_chat_to_session(next_question, type="question")
 
     # Optional: Check if next question is flagged by OpenAI's moderation endpoint
     if parameters.get('moderate_questions'):

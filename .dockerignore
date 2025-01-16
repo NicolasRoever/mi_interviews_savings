@@ -1,15 +1,11 @@
 ## Python
-# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 *.pyc
-
 *.DS_Store
 *.log
 *.pid
-
-# C extensions
 *.so
 
 # Distribution / packaging
@@ -31,10 +27,6 @@ wheels/
 *.egg
 
 ## Application 
-*report*
-.dbdata
 *.csv
-
-
-## SAM
+data/
 .aws-sam/

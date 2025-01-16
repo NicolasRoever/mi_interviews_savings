@@ -3,11 +3,23 @@ from functools import wraps
 from flask import make_response, jsonify, request
 import time
 import traceback as tb
-from setup.log import Logger
-from parameters import WHITELISTED_DOMAINS
+import logging 
+import os
+import json
 
-# Specialized logging logger
-logger = Logger()
+LOG_LEVEL = os.getenv("LOG_LEVEL", "ERROR")
+logging.basicConfig(
+	level=getattr(logging, LOG_LEVEL),
+	format="%(asctime)s %(name)-20s %(levelname)-8s %(message)s",
+	encoding='utf-8',
+	handlers=[logging.StreamHandler()]
+)
+
+def jsonable(obj):
+	try: 
+		return json.dumps(obj)
+	except: 
+		return ". ".join(str(obj).split("\n"))
 
 def wrap_flask_errors():
 	""" Wrap flask app-level errors as standardized JSON responses. """
@@ -26,18 +38,6 @@ def wrap_flask_errors():
 		)} for error_code, error in default_exceptions.items()
 	}
 
-def response_log(response, status, start_time, key="info"):
-	""" Log outgoing response. Useful for debugging/monitoring. """
-	logger.log(key=key, message={
-		"payload":request.get_json(force=True, silent=True) or {},
-		"url":request.url,
-		"duration":time.time() - start_time,
-		"response":response,
-		"http_code":status,
-		"type":response["type"] if (isinstance(response, dict) and 
-			response.get("tb")) else "RequestSuccessful"
-	})
-
 def handle_500(f):
 	@wraps(f)
 	def decorated(*args, **kwargs):
@@ -48,7 +48,15 @@ def handle_500(f):
 			http_code = getattr(e, "http_code", None) or getattr(e, "code", 500)
 			message = str(e) or getattr(e, "message", "Service failed")
 			meta = {"type":type(e).__name__,"tb":tb.format_exc(),"str":message}
-			response_log(meta, http_code, start_time, key="error")
+			# Log application errors
+			logging.error(jsonable({
+				"payload":request.get_json(force=True, silent=True) or {},
+				"url":request.url,
+				"duration":time.time() - start_time,
+				"response":meta,
+				"http_code":http_code,
+				"type":meta["type"]	
+			}))
 			response = make_response(jsonify(meta), http_code)
 		return response
 	return decorated

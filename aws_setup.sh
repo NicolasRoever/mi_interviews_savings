@@ -1,15 +1,16 @@
 #!/bin/bash
 
 echo "----------------------------------- IMPORTANT NOTES: --------------------------------------"
-echo "This file configures AWS in order to build and deploy your application. You should run:"
-echo "    $0 <AWS_PUBLIC_ACCESS_KEY> <AWS_SECRET_ACCESS_KEY> <AWS_REGION> <S3_BUCKET>"; 
+echo "This script configures your AWS account for deployment of the AI interviewer application."
+echo "Run the script from your terminal (with the AWS/SAM CLI installed) as follows:"
+echo "$0 <AWS_PUBLIC_ACCESS_KEY> <AWS_SECRET_ACCESS_KEY> <AWS_REGION> <S3_BUCKET>"; 
 echo
 echo "Or if you prefer, export those variables as environment variables or even modify this file "
 echo "directly defining the appropriate variables with the keys you generated and chosen bucket name"
-echo "Then, run without arguments the script: "; echo "    $0    "; 
+echo "Then, run without arguments the script: "; echo "$0    "; 
 echo 
 echo "Note: if a 'BucketAlreadyOwnedByYou' error arises, ignore it: it means you are running this"
-echo "script attempting to create a bucket that already exists. This is not a problem. "
+echo "script attempting to create an S3 bucket that already exists. This is not a problem. "
 echo "Similarly, if 'ResourceInUseException' arises creating the Dynamo table, you can ignore it."
 echo "-------------------------------------------------------------------------------------------"
 echo 
@@ -66,7 +67,8 @@ aws s3api put-bucket-lifecycle-configuration \
 	    ]
 	}'
 
-# Create AWS DynamoDB table to store interviews
+# Create AWS DynamoDB table to store interviews. By default named 'interview-sessions', 
+# unless DYNAMO_TABLE is otherwise set as environment variable.
 TABLE_NAME=${DYNAMO_TABLE:-'interview-sessions'}
 echo; echo "Creating DynamoDB table '$TABLE_NAME' to store interview sessions"
 aws dynamodb create-table \
@@ -81,6 +83,6 @@ echo "----------------------------------- IMPORTANT NOTES: ---------------------
 echo "This file needs to be run just once as all future changes will be reflected in re-deployment."
 echo "And ensure that the same S3 bucket and Dynamo table is referenced in deployment. "
 echo
-echo "You are now ready to deploy your app running './serverless-deploy.sh' :) "
+echo "You are now ready to deploy your app with the script './aws_deploy.sh' "
 echo "-------------------------------------------------------------------------------------------"
 echo

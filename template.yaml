@@ -14,7 +14,7 @@ Globals:
     LoggingConfig:
       LogFormat: JSON
       SystemLogLevel: WARN          # Change as you see fit
-      ApplicationLogLevel: ERROR    # Change as you see fit
+      ApplicationLogLevel: INFO    # Change as you see fit
     Architectures:
       - arm64 
   Api:
@@ -29,7 +29,7 @@ Resources:
     # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Type: AWS::Serverless::Function   
     Properties:
-      CodeUri: ../app/
+      CodeUri: app/
       Handler: lambda.handler
       Policies:
         # Give your Lambda access to DynamoDB
@@ -45,22 +45,14 @@ Resources:
       Environment:
         Variables:
           DATABASE: DYNAMODB
-          DATABASE_URL: !Ref TableName  # Required connector to DynamoDB backend 
-          PORT: !Ref Port                    
-          OPENAI_API_KEY: !Ref OpenAIAPIKey   
+          DYNAMO_TABLE: !Ref TableName  # Required connector to DynamoDB backend 
+          PORT: 8000                   
 
 Parameters:
-  OpenAIAPIKey:
-    Description: Required OpenAI API key for GPT integration
-    Type: String
-  Port:
-    Description: Required for the Lambda Web Adapter
-    Type: String
-    Default: 8000
   TableName:
     Description: Required name of table which application will write to
     Type: String
-    Default: INTERVIEWS
+    Default: interview-sessions
 
 
 Outputs:

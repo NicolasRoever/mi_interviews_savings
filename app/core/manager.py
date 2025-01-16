@@ -16,104 +16,89 @@ class InterviewManager(object):
         self.session_id = session_id
     
     def begin_session(self, parameters:dict):
-        """
-        Loads interview data and variables into session.
-        Note indices are 1-indexed. 
-
-        Args:
-            parameters: (dict) interview guidelines
-        """
+        """ Set starting interview session variables. """
         logging.info(f"Starting new session '{self.session_id}'")
-        self.data = {
-            'session_id': self.session_id,
-            'current_topic_idx': 1,
-            'current_question_idx': 1,
-            'current_finish_idx': 1,
-            'chat': [],
-            'flagged_messages': [],
-            'terminated': False,  
-            'summary': '',
-            'parameters': parameters
+        self.history = []           # List of 'states', i.e. messages
+        self.current_state = {
+            'order': 0,                         # index of message
+            'session_id': self.session_id,      # always store session_id
+            'topic_idx': 1,                     # topic index
+            'question_idx': 1,                  # within-topic question index
+            'finish_idx': 1,                    # closing question index
+            'flagged_messages': 0,              # count of flagged messages
+            'terminated': False,                # whether termination signal been sent
+            'summary': '',                      # running summary
+            'type': 'question',                 # question or answer
+            'content': None                     # content
         }
-        # Add starting interview question to transcript
-        self.add_message(parameters['first_question'], type="question")
-        self.update_session()
+        self.parameters = parameters
 
-    def resume_session(self):
-        """ Load (remote) data into current Interview object. """
-        self.data = self.client.load_remote_session(self.session_id)
-        assert self.data.get('session_id') == self.session_id
+    def resume_session(self, parameters:dict):
+        """ Load (remote) history into current Interview object. """
+        self.history = self.client.load_remote_session(self.session_id)
+        assert len(self.history) >= 1 
+        assert self.history[-1].get('session_id') == self.session_id
+        # Set current state equal to last
+        self.current_state = self.history[-1].copy()
+        self.parameters = parameters
         logging.info(f"Resumed existing interview session '{self.session_id}'")
 
-    def get_session_info(self, key:str=None):
-        """ Get data associated with current interview session (key). """
-        return self.data[key] if key else self.data
+    def get_history(self):
+        """ Return interview session history. """
+        return self.history
 
     def is_terminated(self) -> bool:
         """ If interview has been terminated. """
-        return self.data['terminated']
+        return self.current_state['terminated']
 
     def flag_risk(self, message:str):
         """ Flag possible security risk. """
-        logging.warning("Flagging message for possible risk...")
-        flagged = [str(datetime.now())]
-        if self.data['parameters'].get('store_flagged_messages'):
-            flagged.append(message)
-        self.data["flagged_messages"].append(flagged)
+        logging.warning(f"Flagging message '{message}' for possible risk...")
+        self.current_state["flagged_messages"] += 1
 
     def flagged_too_often(self) -> bool:
         """ Check if the conversation has been flagged too often. """
-        if len(self.data['flagged_messages']) >= self.data['parameters'].get('max_flags_allowed', 3):
+        if self.current_state['flagged_messages'] >= self.parameters.get('max_flags_allowed', 3):
             self.terminate("security_flags_exceeded")
             return True        
         return False
 
-    def add_message(self, message:str, type:str):
-        """ Add to chat transcript. """
-        self.data['chat'].append({
-            'order':len(self.data['chat']),
-            'type':type, 
-            'content':message,
-            'topic_idx':self.data['current_topic_idx'],
-            'question_idx':self.data['current_question_idx'],
-            'time':str(datetime.now()),
-            'session_id':self.session_id
-        })
-
-    def repeated_messages(self, message:str, min_length:int=5) -> bool:
-        """ Check if user has repeated the same message multiple times. """
-        if len(self.data["chat"]) < min_length: # Ignore for short chats
-            return False
-        # Return if the last or penultimate message of the user are the same
-        return message in (chat['content'] for chat in self.data["chat"][-2:])
+    def add_chat_to_session(self, message:str, type:str):
+        """ Add to chat transcript to remote database """ 
+        self.current_state['order'] += 1
+        self.current_state['time'] = str(datetime.now()) 
+        self.current_state['content'] = message
+        self.current_state['type'] = type
+        self.history.append(self.current_state.copy())
+        self.client.update_remote_session(self.session_id, self.history)
 
     def terminate(self, reason:str="end_of_interview"):
         """ Record termination of interview. """
-        self.data["terminated"] = True
+        self.current_state["terminated"] = True
         logging.info(f"Terminating interview because: '{reason}'")
 
     def update_summary(self, summary:str):
         """ Update summary of prior interview. """
-        self.data["summary"] = summary
+        self.current_state["summary"] = summary
 
     def get_current_topic(self) -> int:
         """ Return topic index. """
-        return min(int(self.data["current_topic_idx"]), len(self.data['parameters']['interview_plan']))
+        return min(int(self.current_state["topic_idx"]), len(self.parameters['interview_plan']))
 
     def get_current_topic_question(self) -> int:
         """ Return question index within topic. """
-        return int(self.data["current_question_idx"])
+        return int(self.current_state["question_idx"])
 
     def get_final_question(self) -> str:
         """ Get next "final" (i.e. closing) interviewer question/comment. """
-        final_questions = self.data['parameters'].get('closing_questions', [])
+        final_questions = self.parameters.get('closing_questions', [])
         try:
-            out = final_questions[int(self.data["current_finish_idx"]) - 1]
+            out = final_questions[int(self.current_state["finish_idx"]) - 1]
         except IndexError:
             out = ""
         else:
             # Increment counter of which 'final' question we are on
-            self.data["current_finish_idx"] += 1
+            self.current_state["finish_idx"] += 1
         return out
 
     def update_transition(self, summary:str):
@@ -123,20 +108,21 @@ class InterviewManager(object):
         If summary agent is provided, also update interview summary of 
         prior topics covered for future context.
         """
-        self.data["current_question_idx"] = 1  
-        self.data["current_topic_idx"] += 1
-        if self.data['parameters'].get('summary'):
+        self.current_state["question_idx"] = 1  
+        self.current_state["topic_idx"] += 1
+        if self.parameters.get('summary'):
             self.update_summary(summary)
 
     def update_closing(self):
-        self.data["current_question_idx"] = 99  
-        self.data["current_topic_idx"] = 99
+        self.current_state["question_idx"] = 99  
+        self.current_state["topic_idx"] = 99
 
     def update_probe(self):
         """ Having probed within topic, simply increment question counter. """ 
-        self.data["current_question_idx"] += 1  
+        self.current_state["question_idx"] += 1  
 
     def update_session(self):
-        """ Update session in remote database """ 
-        self.client.update_remote_session(self.session_id, self.data)
+        """ Update current state in remote database """ 
+        self.history[-1] = self.current_state
+        self.client.update_remote_session(self.session_id, self.history)
    
