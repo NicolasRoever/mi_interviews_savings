@@ -61,7 +61,7 @@ The cleanest way to then run the application -- locally or remotely -- is throug
 
 ```bash
 git clone https://github.com/fchop/interviews.git
-cd qualitative-interviews
+cd interviews
 ```
 
 **Step 2**: Build a Docker image (e.g. named `interviews`) and run it in a container:
@@ -100,7 +100,7 @@ source bin/activate
 
 ```bash
 git clone https://github.com/fchop/interviews.git
-cd qualitative-interviews
+cd interviews
 
 pip install -r local_requirements.txt
 ```
