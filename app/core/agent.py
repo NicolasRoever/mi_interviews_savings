@@ -1,3 +1,4 @@
+from asyncio import tasks
 import logging
 from core.auxiliary import (
     execute_queries, 
@@ -37,22 +38,35 @@ class LLMAgent(object):
         defaults to `gpt-4o-mini` model, 300 token answer limit, and temperature of 0. 
         For details see https://platform.openai.com/docs/api-reference/completions.
         """
-        return {
-            task: {
+        
+        query_dict = {}
+        for task in tasks:
+            model = self.parameters[task].get('model', 'gpt-4o-mini')
+            base_dict = {
                 "messages": [{
-                    "role":"user", 
+                    "role": "user",
                     "content": fill_prompt_with_interview(
-                        self.parameters[task]['prompt'], 
+                        self.parameters[task]['prompt'],
                         self.parameters['interview_plan'],
                         history,
                         user_message=user_message
                     )
                 }],
-                "model": self.parameters[task].get('model', 'gpt-4o-mini'),
-                "max_tokens": self.parameters[task].get('max_tokens', 300),
-                "temperature": self.parameters[task].get('temperature', 0)
-            } for task in tasks
-        }
+                "model": model
+            }
+
+            # Add "max_tokens" and "temperature" if model contains "4"
+            if "4" in model:
+                base_dict["max_tokens"] = self.parameters[task].get('max_tokens', 300)
+                base_dict["temperature"] = self.parameters[task].get('temperature', 0)
+            else:
+                # If no "4" in model, add "max_completion_tokens" only, no temperature
+                base_dict["max_completion_tokens"] = self.parameters[task].get('max_completion_tokens', 300)
+
+            query_dict[task] = base_dict
+
+        return query_dict
+    
 
     def review_answer(self, message:str, history:list) -> bool:
         """ Moderate answers: Are they on topic? """
