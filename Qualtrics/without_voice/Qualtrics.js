@@ -137,6 +137,7 @@ Qualtrics.SurveyEngine.addOnload(function () {
                 dataType: "json",
                 success: function (data) {
                     var next_question = data.message.trim();
+                    console.log("Question received from server:", next_question);
 
                     // Check if this is the last message of the interview
                     var endInterviewIndex = next_question.indexOf("---END---");
