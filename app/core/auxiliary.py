@@ -33,7 +33,7 @@ def fill_prompt_with_interview(template:str, topics:list, history:list, user_mes
         next_interview_topic=topics[next_topic_idx - 1]["topic"],
         current_topic_history=current_topic_chat
     )
-    logging.debug(f"Prompt to GPT:\n{prompt}")
+    logging.info(f"Prompt to GPT:\n{prompt}")
     assert not re.findall(r"\{[^{}]+\}", prompt)
     return prompt 
 
