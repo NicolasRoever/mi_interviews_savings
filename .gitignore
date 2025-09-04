@@ -7,6 +7,8 @@ __pycache__/
 *.log
 *.pid
 *.so
+app/parameters.py
+app/.env
 
 # Distribution / packaging
 .Python
