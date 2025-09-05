@@ -3,6 +3,7 @@ import os
 from parameters import INTERVIEW_PARAMETERS, OPENAI_API_KEY
 from core.manager import InterviewManager
 from core.agent import LLMAgent
+from database.dynamo import DynamoDB
 
 def connect_to_database():
     """ Instantiate specific backend database. """
@@ -61,7 +62,7 @@ def transcribe(audio:str) -> dict:
     logging.info(f"Returning transcription text: '{transcription}'")
     return {'transcription':transcription}
 
-def next_question(session_id:str, interview_id:str, user_message:str=None) -> dict:
+def next_question(session_id:str, interview_id:str,  user_message:str=None) -> dict: #TODO Add db and agent as parameters here, this cannot be!
     """
     Process user message and generate response by the AI-interviewer.
 
@@ -111,29 +112,12 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
     on_last_question = current_question_idx >= num_questions
     logging.info(f"On question {current_question_idx}/{num_questions}...")
 
-    # Continue in workflow
-    if on_last_topic and on_last_question:
-        # Close interview with pre-determined closing questions
-        next_question = interview.get_final_question()
-        interview.update_closing()
-        if not next_question:
-            # Exit condition: have already produced last "final" question
-            interview.terminate()
-            interview.update_session()
-            return {'session_id':session_id, 'message':parameters['end_of_interview_message']}
 
-    elif on_last_question:
-        # Transition to *next* topic...
-        next_question, summary = agent.transition_topic(interview.get_history())
-        interview.update_transition(summary)
+    next_question = agent.execute_query_v002(
+        interview_manager = interview)
 
-    else:
-        # Proceed *within* topic...
-        next_question = agent.probe_within_topic(interview.get_history())
-        interview.update_probe()
-
-    # Update interview with new output
-    logging.info(f"Interviewer responded: '{next_question}'")
+    #TODO: Add ending condition here
+    
     interview.add_chat_to_session(next_question, type="question")
 
     

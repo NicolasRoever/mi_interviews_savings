@@ -16,8 +16,8 @@ Our recommended setup is to host the AI interviewer application as an AWS Lambda
 
 ## Comments Improvement NR
 
-Step 1: I would like more control over what history is part of the prompt
-- I want to write each prompt individually
+Current Things to think about: 
+- 
 
 
 ### Here is the current history database structure:
