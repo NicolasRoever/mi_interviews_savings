@@ -1,0 +1,22 @@
+name: llm-agent
+channels:
+  - conda-forge
+dependencies:
+  # Core interpreter
+  - python=3.11
+
+  # Basics
+  - pip
+  - pytest
+  - pip:
+      - openai>=1.40.0     # new Python SDK
+      - pydantic>=2.8.0    # for schemas / validation
+      - python-dotenv>=1.0.1
+      - typer>=0.12.3      # simple CLI
+      - rich>=13.7.0       # (optional) pretty logs
+
+      # Reliability
+      - tenacity>=8.3.0    # retry/backoff
+
+      # Testing
+      - vcrpy>=6.0.1       # record/replay HTTP
