@@ -3,7 +3,9 @@ import logging
 from core.auxiliary import (
     execute_queries, 
     fill_prompt_with_interview, 
-    chat_to_string
+    chat_to_string, 
+    fill_prompt_with_interview_v002, 
+    _extract_content
 )
 from io import BytesIO
 from base64 import b64decode
@@ -32,14 +34,28 @@ class LLMAgent(object):
         )
         return response.text
 
-    def construct_query_v002(self, question_name) -> dict:
+    def execute_query_v002(self, interview_manager) -> dict:
         """ 
         We simply need a function analogous to llm_step in my setup. This constructs the prompt using the information stored in the interview manager class.
         """
-        
-        pass
-    
+        current_question = interview_manager.current_state['question_name']
+        step = next((d for d in interview_manager.parameters['interview_plan'] if d.get("question_name") == current_question), None)
 
+        prompt = fill_prompt_with_interview_v002(
+            step = interview_manager.parameters,
+            global_prompt= interview_manager.parameters["global_mi_system_prompt"],
+            history=interview_manager.history,
+            history_indices=step.get("history_indices", None)
+        )
+
+        response = self.client.chat.completions.create(
+        messages = prompt, 
+        model = step.get("model", "gpt-4o-mini"),
+        reasoning_effort=step.get("reasoning_effort", "minimal"),
+        max_completion_tokens=step.get("max_completion_tokens", 300) 
+        )
+
+        return _extract_content(response)
 
     #------------Deprecated Functions-------------#
 

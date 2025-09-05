@@ -14,6 +14,21 @@ The file `app/parameters.py` provides a detailed description of how the paramete
 Our recommended setup is to host the AI interviewer application as an AWS Lambda function (Option 3 below) and to embed the AI interview into a Qualtrics survey, for which we provide files in `/Qualtrics`.
 
 
+## Comments Improvement NR
+
+Step 1: I would like more control over what history is part of the prompt
+- I want to write each prompt individually
+
+
+### Here is the current history database structure:
+
+```bash
+[{'summary': '', 'topic_idx': Decimal('1'), 'question_idx': Decimal('1'), 'finish_idx': Decimal('1'), 'session_id': 'MI-TESTING-22739730', 'time': '2025-09-04 12:27:25.898645', 'type': 'question', 'terminated': False, 'content': 'I am interested in your experiences on how you have been saving money. Could you tell me about your current savings habits?', 'order': Decimal('1'), 'flagged_messages': Decimal('0')},
+ {'summary': '', 'topic_idx': Decimal('1'), 'question_idx': Decimal('1'), 'finish_idx': Decimal('1'), 'session_id': 'MI-TESTING-22739730', 'time': '2025-09-04 12:27:28.018518', 'type': 'answer', 'terminated': False, 'content': 'Do not keep track', 'order': Decimal('2'), 'flagged_messages': Decimal('0')}, 
+ {'summary': '', 'topic_idx': Decimal('2'), 'question_idx': Decimal('1'), 'finish_idx': Decimal('1'), 'session_id': 'MI-TESTING-22739730', 'time': '2025-09-04 12:27:29.817403', 'type': 'question', 'terminated': False, 'content': \"Looking back, have there been any moments where you felt positive about your approach to saving, even if you weren't keeping track?\", 'order': Decimal('3'), 'flagged_messages': Decimal('0')}, {'summary': '', 'topic_idx': Decimal('2'), 'question_idx': Decimal('1'), 'finish_idx': Decimal('1'), 'session_id': 'MI-TESTING-22739730', 'time': '2025-09-05 17:35:13.662727', 'type': 'answer', 'terminated': False, 'content': 'Hello', 'order': Decimal('4'), 'flagged_messages': Decimal('0')}, {'summary': '', 'topic_idx': Decimal('3'), 'question_idx': Decimal('1'), 'finish_idx': Decimal('1'), 'session_id': 'MI-TESTING-22739730', 'time': '2025-09-05 17:35:16.042730', 'type': 'question', 'terminated': False, 'content': \"To summarize what we've discussed, you mentioned that you don't keep track of your savings. Is this a fair summary of how you see your past savings behavior?\", 'order': Decimal('5'), 'flagged_messages': Decimal('0')}, {'summary': '', 'topic_idx': Decimal('3'), 'question_idx': Decimal('1'), 'finish_idx': Decimal('1'), 'session_id': 'MI-TESTING-22739730', 'time': '2025-09-05 17:35:34.663560', 'type': 'answer', 'terminated': False, 'content': 'Yes i think so.', 'order': Decimal('6'), 'flagged_messages': Decimal('0')}, {'summary': '', 'topic_idx': Decimal('4'), 'question_idx': Decimal('1'), 'finish_idx': Decimal('1'), 'session_id': 'MI-TESTING-22739730', 'time': '2025-09-05 17:35:36.462515', 'type': 'question', 'terminated': False, 'content': \"Now that we've talked about your current approach to saving, on a scale from 0 to 10, where 0 means 'not at all important' and 10 means 'extremely important', how important is it for you to save more money?\", 'order': Decimal('7'), 'flagged_messages': Decimal('0')}]
+```
+
+
 ## Paper and citation
 
 The paper is available here: [https://dx.doi.org/10.2139/ssrn.4583756](https://dx.doi.org/10.2139/ssrn.4583756).

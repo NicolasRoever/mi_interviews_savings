@@ -12,6 +12,7 @@ class InterviewManager(object):
         session_id: (str) unique interview session key
     """
     def __init__(self, client, session_id:str):
+
         self.client = client
         self.session_id = session_id
     
@@ -39,12 +40,12 @@ class InterviewManager(object):
     def resume_session(self, parameters:dict):
         """ Load (remote) history into current Interview object. """
         self.history = self.client.load_remote_session(self.session_id)
-        #assert len(self.history) >= 1 
+        logging.info(f"Current contents of database history: {self.history}")
+        #assert len(self.history) >= 1
         #assert self.history[-1].get('session_id') == self.session_id
         # Set current state equal to last
         self.current_state = self.history[-1].copy()
         self.parameters = parameters
-        logging.info(f"Resumed existing interview session '{self.session_id}'")
 
     def get_history(self):
         """ Return interview session history. """

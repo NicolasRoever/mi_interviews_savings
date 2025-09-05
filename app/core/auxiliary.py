@@ -2,6 +2,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
 import time
 import logging 
+from typing import List, Dict, TypedDict, Iterable
+from decimal import Decimal
+from datetime import datetime
+Message = Dict[str, str]
 
 def chat_to_string(chat:list, only_topic:int=None, until_topic:int=None) -> str:
     """ Convert messages from chat into one string. """
@@ -17,6 +21,86 @@ def chat_to_string(chat:list, only_topic:int=None, until_topic:int=None) -> str:
         if message["type"] == "answer":
             topic_history += f'Interviewee: "{message['content']}"\n'
     return topic_history.strip()
+
+
+def chat_to_string_v002(
+    chat: List[Dict[str, Any]],
+    only_topic: int = None,
+    until_topic: int = None,
+    question_orders: Optional[Iterable[int]] = None,  # NEW (optional)
+) -> str:
+    """Convert messages from chat into one string.
+       If `question_orders` is provided, include ONLY those questions (by `order`)
+       and their first following answers.
+    """
+    topic_history = ""
+    # track whether the *next* answer should be emitted (only when its question matched)
+    emit_next_answer = question_orders is None
+    allowed_orders = set(map(int, question_orders)) if question_orders is not None else None
+
+    for message in chat:
+        # If desire specific topic's chat history:
+        if only_topic and message['topic_idx'] != only_topic:
+            continue
+        if until_topic and message['topic_idx'] == until_topic:
+            break
+
+        if message["type"] == "question":
+            # if filtering by question_orders, check this question's `order`
+            if allowed_orders is not None:
+                ord_val = message.get("order")
+                if isinstance(ord_val, Decimal):
+                    ord_val = int(ord_val)
+                # decide whether to include this question (and its following answer)
+                if ord_val in allowed_orders:
+                    topic_history += f'Interviewer: "{message["content"]}"\n'
+                    emit_next_answer = True
+                else:
+                    emit_next_answer = False
+            else:
+                topic_history += f'Interviewer: "{message["content"]}"\n'
+                emit_next_answer = True
+
+        if message["type"] == "answer":
+            # only include the answer if we included the preceding question
+            if emit_next_answer:
+                topic_history += f'Interviewee: "{message["content"]}"\n'
+                # reset so we only take the first following answer per question
+                emit_next_answer = (question_orders is None)
+
+    return topic_history.strip()
+
+
+def fill_prompt_with_interview_v002(
+    *,
+    step: Dict[str, any],
+    global_prompt: str,
+    history: List[Message],
+    history_indices: List[int] = None
+) -> str: 
+    """
+    Construct a prompt for OpenAI chat API:
+    - Start with the global/system prompt.
+    - Insert interview history messages (user + assistant turns).
+    - Append the current step's instructions as a system message.
+    """
+
+    state = history[-1]
+    current_order_index = int(state['order'])
+    if history_indices is None:
+        history_for_prompt = chat_to_string_v002(history, question_orders=history_indices)
+    else:
+        history_for_prompt = chat_to_string_v002(history)
+
+    # Build a string with the current interview state and history
+    prompt = (
+        f"{global_prompt}\n\n"
+        f"Interview History:\n{history_for_prompt}\n\n"
+        f"Instructions for next question:\n{step['system']}\n"
+    )
+    logging.info(f"Prompt to GPT:\n{prompt}")
+
+    return prompt
 
 def fill_prompt_with_interview(template:str, topics:list, history:list, user_message:str=None) -> str:
     """ Fill the prompt template with parameters from current interview. """
@@ -36,6 +120,8 @@ def fill_prompt_with_interview(template:str, topics:list, history:list, user_mes
     logging.info(f"Prompt to GPT:\n{prompt}")
     assert not re.findall(r"\{[^{}]+\}", prompt)
     return prompt 
+
+
 
 def execute_queries(query, task_args:dict) -> dict:
     """ 
@@ -62,3 +148,15 @@ def execute_queries(query, task_args:dict) -> dict:
     logging.info("OpenAI query took {:.2f} seconds".format(time.time() - st))
     logging.info(f"OpenAI query returned: {suggestions}")
     return suggestions
+
+
+def _extract_content(resp) -> str:
+    """
+    Safely extract assistant content from either object- or dict-like responses.
+    """
+    try:
+        # SDK object style
+        return resp.choices[0].message.content
+    except Exception:
+        # Dict style fallback
+        return resp["choices"][0]["message"]["content"]
