@@ -9,7 +9,6 @@ from helper import _extract_content, _render
 def run_flow(
     *,
     client: OpenAI,
-    model: str,
     steps: List[Dict[str, Any]],
     get_user_reply: Callable[[str], str],
     ctx: Optional[Dict[str, Any]] = None,
@@ -35,9 +34,8 @@ def run_flow(
         step = steps[idx]
         assistant_text = llm_step(
             client=client,
-            model=model,
+            model=step.get("model", "gpt-5-nano-2025-08-07"),
             step=step,
-            history=ctx["history"],
             ctx=ctx,
         )
         print(f"\nASSISTANT: {assistant_text}")
@@ -77,9 +75,8 @@ def llm_step(
     client: OpenAI,
     model: str,
     step: Dict[str, Any],
-    history: List[Dict[str, str]],
     ctx: Dict[str, Any],
-    verbose: bool = False,
+    verbose: bool = True,
 ) -> str:
     """
     Reusable function: builds messages from the step spec (system+developer) + history,
@@ -88,12 +85,13 @@ def llm_step(
     system_txt = _render(step.get("system", ""), ctx)
     dev_txt    = _render(step.get("developer", ""), ctx)
 
-    messages = []
+    messages = [
+        {'role': 'system', 'content': f"Past Interview History: \n {ctx.get('history', '')} \n------------------------------"}
+    ]
     if system_txt:
         messages.append({"role": "system", "content": system_txt})
     if dev_txt:
         messages.append({"role": "developer", "content": dev_txt})
-    messages += history  # include prior turns so the LLM can reflect/continue
 
     if verbose:
         print("\n--- OpenAI Request ---")
@@ -105,9 +103,22 @@ def llm_step(
         model=model,
         messages=messages,
         reasoning_effort="minimal",
-        max_completion_tokens=160,
+        max_completion_tokens=step.get("max_completion_tokens", 300)
     )
-    return resp
+    draft = _extract_content(resp)
+
+    print("\n--- OpenAI Response ---")
+    print(resp)
+
+
+    #Validate Question if validator present
+    validator = step.get("validator")
+    if callable(validator) and not validator(draft):
+        fallback = step.get("fallback") or ""
+        ctx.setdefault("flags", {})[f"{step['name']}_fallback_used"] = True
+        return fallback.strip()
+
+    return draft.strip()
 
 
 
@@ -142,6 +153,18 @@ def contains_scaling_question(text: str) -> bool:
         r"'extremely important'"
     )
     return bool(re.search(pattern, text, flags=re.IGNORECASE))
+
+def correct_scaling_followup(text: str) -> bool:
+    """
+    Checks for the presence of one of the key phrases in the scaling question.
+    """
+    pattern = (
+        r"Why is it a "
+    )
+    return bool(re.search(pattern, text, flags=re.IGNORECASE))
+
+
+
 
 # ---------- One-shot OpenAI call (no inner defs) ----------
 def openai_generate_mi_turn(

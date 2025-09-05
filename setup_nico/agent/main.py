@@ -9,7 +9,6 @@ def main(api_key=OPENAI_API_KEY):
     client = OpenAI(api_key=api_key)
     ctx = run_flow(
         client=client,
-        model="gpt-5-nano-2025-08-07",  # pick your available chat.completions model
         steps=STEPS,
         get_user_reply=get_user_reply_cli,
         ctx={},

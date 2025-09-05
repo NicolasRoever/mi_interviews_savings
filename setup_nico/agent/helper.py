@@ -1,5 +1,6 @@
-from typing import Dict, Any, Callable, Optional
+from typing import Dict, Any, Callable, Optional, List
 
+# ---- tiny helpers ----
 def _extract_content(resp) -> str:
     """
     Safely extract assistant content from either object- or dict-like responses.
@@ -12,6 +13,8 @@ def _extract_content(resp) -> str:
         return resp["choices"][0]["message"]["content"]
     
 
-# ---- tiny helpers ----
+
 def _render(tpl, ctx):
     return tpl(ctx) if callable(tpl) else tpl
+
+
