@@ -1,7 +1,127 @@
 from openai import OpenAI
 import re
-from typing import Optional, Tuple, Dict, Any
-from agent.helper import _extract_content
+from typing import Optional, Tuple, Dict, Any, Callable, List
+from helper import _extract_content, _render
+
+
+# ---- tiny engine (no validators, no LLM) ----
+
+def run_flow(
+    *,
+    client: OpenAI,
+    model: str,
+    steps: List[Dict[str, Any]],
+    get_user_reply: Callable[[str], str],
+    ctx: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    ctx = ctx or {}
+    ctx.setdefault("history", [])
+
+    # --- Step 1: hardcoded opening ---
+    q1 = (
+        "I’m interested in your experiences with saving money. "
+        "Could you tell me about your current savings habits?"
+    )
+    print(f"\nASSISTANT: {q1}")
+    ctx["history"].append({"role": "assistant", "content": q1})
+    u1 = get_user_reply(q1)
+    ctx["history"].append({"role": "user", "content": u1})
+    ctx["savings_habits"] = u1
+
+    # --- Next steps: use LLM engine ---
+    names = [s["name"] for s in steps]
+    idx = 0
+    while idx is not None:
+        step = steps[idx]
+        assistant_text = llm_step(
+            client=client,
+            model=model,
+            step=step,
+            history=ctx["history"],
+            ctx=ctx,
+        )
+        print(f"\nASSISTANT: {assistant_text}")
+        ctx["history"].append({"role": "assistant", "content": assistant_text})
+
+        user_text = get_user_reply(assistant_text)
+        ctx["history"].append({"role": "user", "content": user_text})
+
+        if "on_user_reply" in step and step["on_user_reply"]:
+            step["on_user_reply"](user_text, ctx)
+
+        nxt = step.get("next", lambda _ctx: None)(ctx)
+        idx = names.index(nxt) if nxt else None
+
+    return ctx
+
+# ---- demo I/O ----
+def get_user_reply_cli(_prompt_to_user: str) -> str:
+    return input("YOU: ")
+
+
+
+
+
+
+
+
+
+
+
+
+
+#--------LLM Step---------#
+
+def llm_step(
+    *,
+    client: OpenAI,
+    model: str,
+    step: Dict[str, Any],
+    history: List[Dict[str, str]],
+    ctx: Dict[str, Any],
+    verbose: bool = False,
+) -> str:
+    """
+    Reusable function: builds messages from the step spec (system+developer) + history,
+    calls the old chat.completions API, and returns the assistant's text.
+    """
+    system_txt = _render(step.get("system", ""), ctx)
+    dev_txt    = _render(step.get("developer", ""), ctx)
+
+    messages = []
+    if system_txt:
+        messages.append({"role": "system", "content": system_txt})
+    if dev_txt:
+        messages.append({"role": "developer", "content": dev_txt})
+    messages += history  # include prior turns so the LLM can reflect/continue
+
+    if verbose:
+        print("\n--- OpenAI Request ---")
+        for m in messages:
+            print(f"{m['role'].upper()}: {m['content']}")
+        print("----------------------")
+
+    resp = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        reasoning_effort="minimal",
+        max_completion_tokens=160,
+    )
+    return resp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # ---------- System Prompt (you can pass a different one per call) ----------
 GENERAL_SYSTEM_PROMPT = (
