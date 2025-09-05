@@ -29,15 +29,18 @@ class InterviewManager(object):
             'terminated': False,                # whether termination signal been sent
             'summary': '',                      # running summary
             'type': 'question',                 # question or answer
-            'content': None                     # content
+            'content': None,                     # content
+            'question_name': None               # name of the last question asked
         }
         self.parameters = parameters
+
+
 
     def resume_session(self, parameters:dict):
         """ Load (remote) history into current Interview object. """
         self.history = self.client.load_remote_session(self.session_id)
-        assert len(self.history) >= 1 
-        assert self.history[-1].get('session_id') == self.session_id
+        #assert len(self.history) >= 1 
+        #assert self.history[-1].get('session_id') == self.session_id
         # Set current state equal to last
         self.current_state = self.history[-1].copy()
         self.parameters = parameters

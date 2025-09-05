@@ -32,40 +32,18 @@ class LLMAgent(object):
         )
         return response.text
 
-    def construct_query(self, tasks:list, history:list, user_message:str=None) -> dict:
+    def construct_query_v002(self, question_name) -> dict:
         """ 
-        Construct OpenAI API completions query, 
-        defaults to `gpt-4o-mini` model, 300 token answer limit, and temperature of 0. 
-        For details see https://platform.openai.com/docs/api-reference/completions.
+        We simply need a function analogous to llm_step in my setup. This constructs the prompt using the information stored in the interview manager class.
         """
         
-        query_dict = {}
-        for task in tasks:
-            model = self.parameters[task].get('model', 'gpt-4o-mini')
-            base_dict = {
-                "messages": [{
-                    "role": "user",
-                    "content": fill_prompt_with_interview(
-                        self.parameters[task]['prompt'],
-                        self.parameters['interview_plan'],
-                        history,
-                        user_message=user_message
-                    )
-                }],
-                "model": model
-            }
+        pass
+    
 
-            # Add "max_tokens" and "temperature" if model contains "4"
-            if "4" in model:
-                base_dict["max_tokens"] = self.parameters[task].get('max_tokens', 300)
-                base_dict["temperature"] = self.parameters[task].get('temperature', 0)
-            else:
-                # If no "4" in model, add "max_completion_tokens" only, no temperature
-                base_dict["max_completion_tokens"] = self.parameters[task].get('max_completion_tokens', 300)
 
-            query_dict[task] = base_dict
+    #------------Deprecated Functions-------------#
 
-        return query_dict
+
     
 
     def review_answer(self, message:str, history:list) -> bool:
@@ -105,3 +83,43 @@ class LLMAgent(object):
             self.construct_query(tasks, history)
         )
         return response['transition'], response.get('summary', '')
+    
+
+
+
+
+
+    def construct_query(self, tasks:list, history:list, user_message:str=None) -> dict:
+        """ 
+        Construct OpenAI API completions query, 
+        defaults to `gpt-4o-mini` model, 300 token answer limit, and temperature of 0. 
+        For details see https://platform.openai.com/docs/api-reference/completions.
+        """
+        
+        query_dict = {}
+        for task in tasks:
+            model = self.parameters[task].get('model', 'gpt-4o-mini')
+            base_dict = {
+                "messages": [{
+                    "role": "user",
+                    "content": fill_prompt_with_interview(
+                        self.parameters[task]['prompt'],
+                        self.parameters['interview_plan'],
+                        history,
+                        user_message=user_message
+                    )
+                }],
+                "model": model
+            }
+
+            # Add "max_tokens" and "temperature" if model contains "4"
+            if "4" in model:
+                base_dict["max_tokens"] = self.parameters[task].get('max_tokens', 300)
+                base_dict["temperature"] = self.parameters[task].get('temperature', 0)
+            else:
+                # If no "4" in model, add "max_completion_tokens" only, no temperature
+                base_dict["max_completion_tokens"] = self.parameters[task].get('max_completion_tokens', 300)
+
+            query_dict[task] = base_dict
+
+        return query_dict

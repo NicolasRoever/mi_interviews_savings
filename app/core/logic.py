@@ -27,7 +27,7 @@ def delete_interview_session(session_id:str):
 def resume_interview_session(session_id:str, interview_id:str, user_message:str) -> InterviewManager:
     """ Return InterviewManager object of existing session. """
     interview = InterviewManager(db, session_id)
-    interview.resume_session(INTERVIEW_PARAMETERS[interview_id])
+    interview.resume_session(INTERVIEW_PARAMETERS[interview_id]) # Why are you reinstating the class and overriding it? 
     logging.info("Generating next question for session '{}', user message '{}'".format(
         session_id, 
         user_message
@@ -87,21 +87,6 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
     # Provide interview guidelines to LLM agent
     agent.load_parameters(parameters)
 
-    # Optional: Moderate interviewee responses, e.g. flagging off-topic or harmful messages
-    if parameters.get('moderate_answers') and parameters.get('moderator'):
-        on_topic = agent.review_answer(user_message, interview.get_history())
-        if not on_topic:
-            interview.flag_risk(user_message)
-
-        # Terminate if the conversation has been flagged too often
-        if interview.flagged_too_often():
-            interview.update_session()
-            return {'session_id':session_id, 'message':parameters['flagged_message']}
-
-        # If user message does not fit the interview context, give another chance
-        if not on_topic: # but not flagged too often...
-            interview.update_session() 
-            return {'session_id':session_id, 'message':parameters['off_topic_message']}
 
     """
     UPDATE INTERVIEW WITH NEW USER MESSAGE
@@ -117,6 +102,7 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
     num_topics = len(parameters['interview_plan'])
     current_topic_idx = interview.get_current_topic()
     on_last_topic = current_topic_idx == num_topics
+    current_question_name = interview.current_state.get('question_name', None)
     logging.info(f"On topic {current_topic_idx}/{num_topics}...")
 
     # Current question within topic guide
