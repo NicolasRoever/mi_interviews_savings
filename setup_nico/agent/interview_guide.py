@@ -11,7 +11,6 @@ GLOBAL_MI_SYSTEM_PROMPT = (
     "- Ask only ONE question per response."
 )
 
-
 STEPS = [
     {
         "name": "followup_past_positives",
@@ -37,7 +36,7 @@ STEPS = [
         "system": GLOBAL_MI_SYSTEM_PROMPT,
         "developer": (
             "Compose the next assistant message.\n"
-            "Goal: Look at what the USER has said in 'Past Interview History' given above and ask a follow up into their past experiences saving money.\n"
+            "Goal: Look at what the user has said in 'Past Interview History' given above and ask a follow up into their past experiences saving money.\n"
             "------------------------------\n"
         ),
         "on_user_reply": lambda reply, ctx: ctx.update({"past_failures": reply}),
@@ -134,7 +133,5 @@ STEPS = [
         "next": lambda ctx: None,
         "max_completion_tokens": 200,
     }, 
-
-
 
 ]

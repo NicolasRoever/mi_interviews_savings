@@ -150,12 +150,5 @@ def next_question(session_id:str, interview_id:str, user_message:str=None) -> di
     logging.info(f"Interviewer responded: '{next_question}'")
     interview.add_chat_to_session(next_question, type="question")
 
-    # Optional: Check if next question is flagged by OpenAI's moderation endpoint
-    if parameters.get('moderate_questions'):
-        flagged_question = agent.review_question(next_question)
-        if flagged_question:
-            interview.terminate(reason="question_flagged")
-            interview.update_session()
-            return {'session_id':session_id, 'message':parameters['end_of_interview_message']}
     
     return {'session_id':session_id, 'message':next_question}
