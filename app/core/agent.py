@@ -5,6 +5,7 @@ from core.auxiliary import (
     fill_prompt_with_interview,
     chat_to_string,
     fill_prompt_with_interview_v002,
+    chat_to_string_v002,
     _extract_content,
 )
 from io import BytesIO
@@ -15,9 +16,8 @@ from openai import OpenAI
 class LLMAgent(object):
     """Class to manage LLM-based agents."""
 
-    def __init__(self, openai_client: OpenAI, timeout: int = 30, max_retries: int = 3):
+    def __init__(self, openai_client: OpenAI):
         self.client = openai_client
-        logging.info("OpenAI client instantiated. Should happen only once!")
 
     def load_parameters(self, parameters: dict):
         """Load interview guidelines for prompt construction."""
@@ -38,6 +38,7 @@ class LLMAgent(object):
         We simply need a function analogous to llm_step in my setup. This constructs the prompt using the information stored in the interview manager class.
         """
         current_question = interview_manager.current_state["question_name"]
+
         step = next(
             (
                 d

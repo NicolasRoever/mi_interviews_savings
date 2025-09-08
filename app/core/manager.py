@@ -48,6 +48,18 @@ class InterviewManager(object):
         # if not, passing them in here is acceptable for now
         self.parameters = parameters
 
+    def update_parameters_after_question(self, question_name: str):
+        current_step = next(
+            (
+                d
+                for d in self.parameters["interview_plan"]
+                if d.get("question_name") == question_name
+            ),
+            None,
+        )
+
+        self.current_state["question_name"] = current_step.get("next_question", None)
+
     def get_history(self):
         """Return interview session history."""
         return self.history

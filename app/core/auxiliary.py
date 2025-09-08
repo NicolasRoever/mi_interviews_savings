@@ -159,6 +159,11 @@ def execute_queries(query, task_args: dict) -> dict:
     return suggestions
 
 
+def _extract_content(response: dict) -> str:
+    """Extract content from OpenAI response."""
+    return response["choices"][0]["message"]["content"].strip("\n\" '''")
+
+
 # ------------ DB Helper Functions -------------#
 # TODO SHould be a new database protocol class (or removed entirely because these are just one-liners....)
 

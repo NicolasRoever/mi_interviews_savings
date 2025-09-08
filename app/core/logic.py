@@ -55,6 +55,9 @@ def next_question(
     next_question = agent.execute_query_v002(interview_manager=interview_manager)
 
     interview_manager.add_chat_to_session(message=next_question, type="question")
+    interview_manager.update_parameters_after_question(
+        question_name=interview_manager.current_state["question_name"]
+    )
 
     return {"session_id": session_id, "message": next_question}
 
