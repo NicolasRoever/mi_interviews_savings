@@ -2,11 +2,36 @@
 You can delete this file if you are deploying the AI interviewer application on your own dedicated server."""
 
 import json
-from core.logic import (
-    next_question, 
-    retrieve_sessions, 
-    transcribe
-)
+from core.logic import next_question, retrieve_sessions, transcribe
+
+from core.manager import InterviewManager
+from core.agent import LLMAgent
+from database.dynamo import DynamoDB, connect_to_database
+from parameters import INTERVIEW_PARAMETERS, OPENAI_API_KEY
+from openai import OpenAI
+
+
+# ------------ Global Variables Initiated on Cold Start -------------#
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "OPTIONS,POST",
+    "Content-Type": "application/json",
+}
+
+
+def _resp(status: int, body: dict) -> dict:
+    return {"statusCode": status, "headers": CORS_HEADERS, "body": json.dumps(body)}
+
+
+db = connect_to_database()
+openai_client = OpenAI(api_key=OPENAI_API_KEY, timeout=30, max_retries=3)
+agent = LLMAgent(openai_client=openai_client)
+
+
+# ------------ Lambda Handler -------------#
+
 
 def handler(event, context):
     """This function processes requests to the AWS Lambda function for conducting AI-led interviewers.
@@ -14,11 +39,11 @@ def handler(event, context):
     To make API calls to this Lambda function, you need to know the public endpoint (an URL).
     This endpoint is generated when you deploy the Lambda function using the "aws_deploy.sh" script and shown in the output.
     The endpoint always has the following structure:
-        
+
         https://<SOME_STRING>.execute-api.<YOUR_SELECTED_REGION>.amazonaws.com/Prod/
-    
+
     For example, it could look like this:
-    
+
         https://u94z55rxvt.execute-api.eu-north-1.amazonaws.com/Prod/
 
     The lambda function has three main routes (next, transcribe, and retrieve) that can be accessed via POST requests.
@@ -38,13 +63,13 @@ def handler(event, context):
                 "route": "next",
                 "payload": {
                     "session_id": "847918419",
-                    "interview_id": "STOCK_MARKET", 
+                    "interview_id": "STOCK_MARKET",
                     "user_message": "I don't like risky investments"
                 }
             }
             response = requests.post(https://u94z55rxvt.execute-api.eu-north-1.amazonaws.com/Prod/, json=body)
             ```
-        
+
         Example JavaScript request:
             ```
             const body = {
@@ -103,7 +128,7 @@ def handler(event, context):
             }
             response = requests.post(https://u94z55rxvt.execute-api.eu-north-1.amazonaws.com/Prod/, json=body)
             ```
-            
+
         Example JavaScript request:
             ```
             const body = {
@@ -119,30 +144,35 @@ def handler(event, context):
             ```
     """
 
-    response = {
-        "statusCode": 200, 
-        "headers": {
-            "Access-Control-Allow-Headers": "*",
-            "Access-Control-Allow-Origin": "*",            
-            "Access-Control-Allow-Methods": "POST"            
-        },
+    try:
+        req = json.loads(event.get("body", "{}"))
+        route = req.get("route")
+        payload = req.get("payload", {})
+    except Exception:
+        return _resp(400, {"error": "invalid_json"})
+
+    routes = {
+        "transcribe": lambda p: transcribe(p["audio"], agent=agent),
+        "retrieve": lambda p: retrieve_sessions(db=db),
+        "next": lambda p: next_question(
+            session_id=p["session_id"],
+            interview_id=p["interview_id"],
+            user_message=p.get("user_message"),
+            db=db,
+            agent=agent,
+            interview_parameters=INTERVIEW_PARAMETERS,
+        ),
     }
 
-    request = json.loads(event.get('body', '{}'))
-    payload = request.get('payload', {})
-    if request.get('route') == 'transcribe':
-        response['body'] = json.dumps(transcribe(payload['audio']))
-    elif request.get('route') == 'next':
-        response['body'] = json.dumps(
-            next_question(
-                payload['session_id'], 
-                payload['interview_id'], 
-                payload.get('user_message')
-            )
-        )
-    elif request.get('route') == 'retrieve':
-        response['body'] = json.dumps(retrieve_sessions())
-    else:
-        raise ValueError("Invalid request. Please try again.")
+    if route not in routes:
+        return _resp(404, {"error": "unknown_route"})
 
-    return response
+    try:
+        result = routes[route](payload)
+        return _resp(200, result)
+    except KeyError as e:
+        # missing field in payload
+        return _resp(400, {"error": f"missing_field:{e}"})
+    except Exception:
+        # log full details in CloudWatch if you wish
+        return _resp(500, {"error": "internal_error"})

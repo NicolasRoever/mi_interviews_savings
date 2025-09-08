@@ -30,7 +30,7 @@ Resources:
     Type: AWS::Serverless::Function   
     Properties:
       CodeUri: app/
-      Handler: lambda.handler
+      Handler: lambda_handler.handler
       Policies:
         # Give your Lambda access to DynamoDB
         - AmazonDynamoDBFullAccess
