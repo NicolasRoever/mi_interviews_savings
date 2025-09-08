@@ -2,12 +2,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
 import time
 import logging
-from typing import List, Dict, TypedDict, Iterable, Any
+from typing import List, Dict, TypedDict, Iterable, Any, Optional
 from decimal import Decimal
 from datetime import datetime
 
 Message = Dict[str, str]
-from lambda_handler import db  # type: ignore
 
 
 def chat_to_string(chat: list, only_topic: int = None, until_topic: int = None) -> str:
@@ -20,9 +19,9 @@ def chat_to_string(chat: list, only_topic: int = None, until_topic: int = None) 
         if until_topic and message["topic_idx"] == until_topic:
             break
         if message["type"] == "question":
-            topic_history += f'Interviewer: "{message['content']}"\n'
+            topic_history += f"Interviewer: '{message["content"]}'\n"
         if message["type"] == "answer":
-            topic_history += f'Interviewee: "{message['content']}"\n'
+            topic_history += f"Interviewee: '{message['content']}'\n"
     return topic_history.strip()
 
 
@@ -162,22 +161,3 @@ def execute_queries(query, task_args: dict) -> dict:
 def _extract_content(response: dict) -> str:
     """Extract content from OpenAI response."""
     return response["choices"][0]["message"]["content"].strip("\n\" '''")
-
-
-# ------------ DB Helper Functions -------------#
-# TODO SHould be a new database protocol class (or removed entirely because these are just one-liners....)
-
-
-def load_interview_session(session_id: str) -> dict:
-    """Return interview session history to user."""
-    return db.load_remote_session(session_id)
-
-
-def delete_interview_session(session_id: str):
-    """Delete existing interview saved to database."""
-    db.delete_remote_session(session_id)
-
-
-def retrieve_sessions(db, sessions: list = None) -> dict:
-    """Return specified or all existing interview sessions."""
-    return db.retrieve_sessions(sessions)

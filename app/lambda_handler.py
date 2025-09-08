@@ -2,8 +2,7 @@
 You can delete this file if you are deploying the AI interviewer application on your own dedicated server."""
 
 import json
-from core.logic import next_question, retrieve_sessions, transcribe
-
+from core.logic import next_question, transcribe
 from core.manager import InterviewManager
 from core.agent import LLMAgent
 from database.dynamo import DynamoDB, connect_to_database
@@ -176,3 +175,22 @@ def handler(event, context):
     except Exception:
         # log full details in CloudWatch if you wish
         return _resp(500, {"error": "internal_error"})
+
+
+# ------------ DB Helper Functions -------------#
+# TODO SHould be a new database protocol class (or removed entirely because these are just one-liners....)
+
+
+def load_interview_session(session_id: str) -> dict:
+    """Return interview session history to user."""
+    return db.load_remote_session(session_id)
+
+
+def delete_interview_session(session_id: str):
+    """Delete existing interview saved to database."""
+    db.delete_remote_session(session_id)
+
+
+def retrieve_sessions(db, sessions: list = None) -> dict:
+    """Return specified or all existing interview sessions."""
+    return db.retrieve_sessions(sessions)

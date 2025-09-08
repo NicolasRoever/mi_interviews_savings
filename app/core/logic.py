@@ -32,17 +32,16 @@ def next_question(
     params = interview_parameters[interview_id]
     agent.parameters = params
 
-    # Resume if interview has started, otherwise begin (new) session
-    try:
-        interview_manager.resume_session(parameters=params)
-
-    except AssertionError:
+    has_history = bool(db.load_remote_session(session_id))
+    if has_history is False:
         return begin_interview_session(
             session_id=session_id,
             interview_id=interview_id,
             interview_manager=interview_manager,
             parameters=params,
         )
+    else:
+        interview_manager.resume_session(parameters=params)
 
     # Exit condition: this interview has been previously ended
     if interview_manager.current_state["terminated"]:

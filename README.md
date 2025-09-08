@@ -17,7 +17,8 @@ Our recommended setup is to host the AI interviewer application as an AWS Lambda
 ## Comments Improvement NR
 
 Current Things to think about: 
-- 
+- The db functions (currently in lambda_handler.py at the bottom) are trash
+- There is an issue with the load_remote_session (should return list, returns dict)
 
 
 ### Here is the current history database structure:

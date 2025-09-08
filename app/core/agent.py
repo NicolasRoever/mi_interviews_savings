@@ -37,6 +37,7 @@ class LLMAgent(object):
         """
         We simply need a function analogous to llm_step in my setup. This constructs the prompt using the information stored in the interview manager class.
         """
+        logging.info("Executing query v002...")
         current_question = interview_manager.current_state["question_name"]
 
         step = next(
@@ -47,6 +48,7 @@ class LLMAgent(object):
             ),
             None,
         )
+        logging.info(f"Current step data is: {step}")
 
         prompt = fill_prompt_with_interview_v002(
             step=interview_manager.parameters,

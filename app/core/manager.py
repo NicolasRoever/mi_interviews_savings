@@ -1,8 +1,8 @@
 from datetime import datetime
 import logging
 from typing import Any, Dict, Callable, Optional, Union
-from app.database.dynamo import DynamoDB
-from app.database.file import FileWriter
+from database.dynamo import DynamoDB
+from database.file import FileWriter
 import time
 
 
@@ -35,7 +35,9 @@ class InterviewManager(object):
             "summary": "",  # running summary
             "type": "question",  # question or answer
             "content": None,  # content
-            "question_name": None,  # name of the last question asked
+            "question_name": parameters.get(
+                "first_ai_question_name"
+            ),  # name of the last question asked
         }
         self.parameters = parameters
 
