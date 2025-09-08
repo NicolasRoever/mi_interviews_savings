@@ -5,6 +5,10 @@ import logging
 from typing import List, Dict, TypedDict, Iterable, Any, Optional
 from decimal import Decimal
 from datetime import datetime
+import json
+import logging
+from typing import Any, Dict, Tuple
+from openai import APIStatusError, APIConnectionError, AuthenticationError, OpenAI
 
 Message = Dict[str, str]
 
@@ -179,3 +183,66 @@ def get_step_by_question_name(
         if step.get("question_name") == question_name:
             return step
     raise KeyError(f"question_name '{question_name}' not found")
+
+
+def _preview(val: Any, limit: int = 600) -> str:
+    if isinstance(val, str):
+        return (val[:limit] + "…") if len(val) > limit else val
+    try:
+        s = json.dumps(val, ensure_ascii=False)
+        return (s[:limit] + "…") if len(s) > limit else s
+    except Exception:
+        return f"<{type(val).__name__}>"
+
+
+def call_openai_responses(
+    client: OpenAI,
+    *,
+    prompt: str,
+    model: str = "gpt-4o-mini",
+    max_output_tokens: int = 300,
+    reasoning_effort: str = "minimal",
+    log: logging.Logger | None = None,
+) -> Tuple[str, Any]:
+    """
+    Calls the Responses API and returns (output_text, raw_response),
+    while emitting detailed diagnostics for common failures.
+    """
+    log = log or logging.getLogger(__name__)
+    log.info(
+        "OpenAI request (Responses): model=%s max_output_tokens=%s reasoning_effort=%s",
+        model,
+        max_output_tokens,
+        reasoning_effort,
+    )
+    log.debug("Prompt preview: %s", _preview(prompt))
+
+    try:
+        resp = client.responses.create(
+            model=model,
+            input=prompt,
+            reasoning={"effort": reasoning_effort},
+            max_output_tokens=max_output_tokens,
+        )
+        text = (getattr(resp, "output_text", None) or "").strip()
+        log.info("OpenAI output_text present: %s", bool(text))
+        log.debug("OpenAI raw response: %s", resp)
+        return text, resp
+
+    except APIStatusError as e:
+        # 400s & friends: the JSON body tells you exactly what's wrong
+        try:
+            details = e.response.json()
+        except Exception:
+            details = getattr(e, "response", None)
+        log.error("OpenAI APIStatusError %s: %s", e.status_code, details)
+        raise
+    except AuthenticationError as e:
+        log.error("OpenAI AuthenticationError: %s", e)
+        raise
+    except APIConnectionError as e:
+        log.error("OpenAI APIConnectionError: %s", e)
+        raise
+    except Exception as e:
+        log.error("OpenAI unexpected error: %s", e)
+        raise

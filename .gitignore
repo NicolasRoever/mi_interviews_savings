@@ -9,6 +9,7 @@ __pycache__/
 *.so
 app/parameters.py
 app/.env
+app/core/error_sandbox.ipynb
 
 
 ## Nico's setup

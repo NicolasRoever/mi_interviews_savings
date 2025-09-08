@@ -8,6 +8,7 @@ from core.auxiliary import (
     chat_to_string_v002,
     _extract_content,
     get_step_by_question_name,
+    call_openai_responses,
 )
 from core.error_handling import check_data_is_not_empty
 from io import BytesIO
@@ -35,7 +36,7 @@ class LLMAgent(object):
         )
         return response.text
 
-    def execute_query_v002(self, interview_manager) -> dict:
+    def execute_query_v002(self, interview_manager) -> str:
         """
         We simply need a function analogous to llm_step in my setup. This constructs the prompt using the information stored in the interview manager class.
         """
@@ -58,14 +59,17 @@ class LLMAgent(object):
             history_indices=step.get("history_indices", None),
         )
 
-        response = self.client.chat.completions.create(
-            messages=prompt,
-            model=step.get("model", "gpt-4o-mini"),
+        text, full_response = call_openai_responses(
+            client=self.client,
+            prompt=prompt,
+            model=step.get("model", "gpt-5-nano-2025-08-07"),
+            max_output_tokens=step.get("max_output_tokens", 300),
             reasoning_effort=step.get("reasoning_effort", "minimal"),
-            max_completion_tokens=step.get("max_completion_tokens", 300),
         )
 
-        return _extract_content(response)
+        logging.info(f"LLM full response: {full_response}")
+
+        return text
 
     # ------------Deprecated Functions-------------#
 
