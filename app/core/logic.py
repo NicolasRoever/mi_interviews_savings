@@ -30,50 +30,31 @@ def next_question(
 
     interview_manager = InterviewManager(db=db, session_id=session_id)
     params = interview_parameters[interview_id]
+    agent.parameters = params
 
     # Resume if interview has started, otherwise begin (new) session
     try:
         interview_manager.resume_session(parameters=params)
 
-        interview = resume_interview_session(session_id, interview_id, user_message)
-        parameters = interview.parameters
     except AssertionError:
-        return begin_interview_session(session_id, interview_id)
+        return begin_interview_session(
+            session_id=session_id,
+            interview_id=interview_id,
+            interview_manager=interview_manager,
+            parameters=params,
+        )
 
     # Exit condition: this interview has been previously ended
-    if interview.is_terminated():
-        return {"session_id": session_id, "message": parameters["termination_message"]}
+    if interview_manager.current_state["terminated"]:
+        return {"session_id": session_id, "message": params["termination_message"]}
 
-    # Provide interview guidelines to LLM agent
-    agent.load_parameters(parameters)
+    interview_manager.add_chat_to_session(
+        message=user_message, type="answer"
+    )  # TODO Here, type annotations are not super clear yet. The reason is that the flow structure is not so nice
 
-    """
-    UPDATE INTERVIEW WITH NEW USER MESSAGE
-    Note this happens *after* security checks such that
-    flagged messages are *not* added to interview history.
-    """
-    interview.add_chat_to_session(user_message, type="answer")
+    next_question = agent.execute_query_v002(interview_manager=interview_manager)
 
-    ##### CONTINUE INTERVIEW BASED ON WORKFLOW #####
-
-    # Current topic guide
-    num_topics = len(parameters["interview_plan"])
-    current_topic_idx = interview.get_current_topic()
-    on_last_topic = current_topic_idx == num_topics
-    current_question_name = interview.current_state.get("question_name", None)
-    logging.info(f"On topic {current_topic_idx}/{num_topics}...")
-
-    # Current question within topic guide
-    current_question_idx = interview.get_current_topic_question()
-    num_questions = parameters["interview_plan"][current_topic_idx - 1]["length"]
-    on_last_question = current_question_idx >= num_questions
-    logging.info(f"On question {current_question_idx}/{num_questions}...")
-
-    next_question = agent.execute_query_v002(interview_manager=interview)
-
-    # TODO: Add ending condition here
-
-    interview.add_chat_to_session(next_question, type="question")
+    interview_manager.add_chat_to_session(message=next_question, type="question")
 
     return {"session_id": session_id, "message": next_question}
 
@@ -81,31 +62,18 @@ def next_question(
 # ------------ Helper Functions -------------#
 
 
-def resume_interview_session(
-    session_id: str, interview_id: str, user_message: str
-) -> InterviewManager:
-    """Return InterviewManager object of existing session."""
-    interview = InterviewManager(db, session_id)
-    interview.resume_session(
-        INTERVIEW_PARAMETERS[interview_id]
-    )  # Why are you reinstating the class and overriding it?
-    logging.info(
-        "Generating next question for session '{}', user message '{}'".format(
-            session_id, user_message
-        )
-    )
-    return interview
-
-
-def begin_interview_session(session_id: str, interview_id: str) -> dict:
+def begin_interview_session(
+    session_id: str,
+    interview_id: str,
+    interview_manager: InterviewManager,
+    parameters: dict,
+) -> dict:
     """Return response with starting question of new interview session."""
     if not INTERVIEW_PARAMETERS.get(interview_id):
         raise ValueError(f"Invalid interview parameters '{interview_id}' specified!")
-    parameters = INTERVIEW_PARAMETERS[interview_id]
-    interview = InterviewManager(db, session_id)
-    interview.begin_session(parameters)
+    interview_manager.begin_session(parameters=parameters)
     message = parameters["first_question"]
-    interview.add_chat_to_session(message, type="question")
+    interview_manager.add_chat_to_session(message, type="question")
     logging.info(
         "Beginning {} interview session '{}' with prompt '{}'".format(
             interview_id, session_id, message
@@ -120,22 +88,3 @@ def transcribe(audio: str, agent: LLMAgent) -> dict:
     transcription = agent.transcribe(audio)
     logging.info(f"Returning transcription text: '{transcription}'")
     return {"transcription": transcription}
-
-
-# ------------ DB Helper Functions -------------#
-# TODO SHould be a new database protocol class (or removed entirely because these are just one-liners....)
-
-
-def load_interview_session(session_id: str) -> dict:
-    """Return interview session history to user."""
-    return db.load_remote_session(session_id)
-
-
-def delete_interview_session(session_id: str):
-    """Delete existing interview saved to database."""
-    db.delete_remote_session(session_id)
-
-
-def retrieve_sessions(db: Union[DynamoDB, FileWriter], sessions: list = None) -> dict:
-    """Return specified or all existing interview sessions."""
-    return db.retrieve_sessions(sessions)

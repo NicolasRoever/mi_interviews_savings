@@ -3,6 +3,7 @@ import logging
 from typing import Any, Dict, Callable, Optional, Union
 from app.database.dynamo import DynamoDB
 from app.database.file import FileWriter
+import time
 
 
 class InterviewManager(object):
@@ -22,7 +23,6 @@ class InterviewManager(object):
 
     def begin_session(self, parameters: dict):
         """Set starting interview session variables."""
-        logging.info(f"Starting new session '{self.session_id}'")
         self.history = []  # List of 'states', i.e. messages
         self.current_state = {
             "order": 0,  # index of message
@@ -52,10 +52,6 @@ class InterviewManager(object):
         """Return interview session history."""
         return self.history
 
-    def is_terminated(self) -> bool:
-        """If interview has been terminated."""
-        return self.current_state["terminated"]
-
     def flag_risk(self, message: str):
         """Flag possible security risk."""
         logging.warning(f"Flagging message '{message}' for possible risk...")
@@ -72,11 +68,16 @@ class InterviewManager(object):
 
     def add_chat_to_session(self, message: str, type: str):
         """Add to chat transcript to remote database"""
-        self.current_state["order"] += 1
-        self.current_state["time"] = str(datetime.now())
-        self.current_state["content"] = message
-        self.current_state["type"] = type
-        self.history.append(self.current_state.copy())
+        order = (self.history[-1]["order"] if self.history else 0) + 1
+        turn = {
+            **self.current_state,
+            "order": order,
+            "time": int(time.time()),
+            "content": (message or "").strip(),
+            "type": type,
+        }
+        self.history.append(turn)
+        self.current_state = turn
         self.db.update_remote_session(self.session_id, self.history)
 
     def terminate(self, reason: str = "end_of_interview"):

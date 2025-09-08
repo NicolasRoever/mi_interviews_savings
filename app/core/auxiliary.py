@@ -1,20 +1,23 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import re
 import time
-import logging 
+import logging
 from typing import List, Dict, TypedDict, Iterable, Any
 from decimal import Decimal
 from datetime import datetime
-Message = Dict[str, str]
 
-def chat_to_string(chat:list, only_topic:int=None, until_topic:int=None) -> str:
-    """ Convert messages from chat into one string. """
+Message = Dict[str, str]
+from lambda_handler import db  # type: ignore
+
+
+def chat_to_string(chat: list, only_topic: int = None, until_topic: int = None) -> str:
+    """Convert messages from chat into one string."""
     topic_history = ""
     for message in chat:
         # If desire specific topic's chat history:
-        if only_topic and message['topic_idx'] != only_topic: 
+        if only_topic and message["topic_idx"] != only_topic:
             continue
-        if until_topic and message['topic_idx'] == until_topic:
+        if until_topic and message["topic_idx"] == until_topic:
             break
         if message["type"] == "question":
             topic_history += f'Interviewer: "{message['content']}"\n'
@@ -30,19 +33,21 @@ def chat_to_string_v002(
     question_orders: Optional[Iterable[int]] = None,  # NEW (optional)
 ) -> str:
     """Convert messages from chat into one string.
-       If `question_orders` is provided, include ONLY those questions (by `order`)
-       and their first following answers.
+    If `question_orders` is provided, include ONLY those questions (by `order`)
+    and their first following answers.
     """
     topic_history = ""
     # track whether the *next* answer should be emitted (only when its question matched)
     emit_next_answer = question_orders is None
-    allowed_orders = set(map(int, question_orders)) if question_orders is not None else None
+    allowed_orders = (
+        set(map(int, question_orders)) if question_orders is not None else None
+    )
 
     for message in chat:
         # If desire specific topic's chat history:
-        if only_topic and message['topic_idx'] != only_topic:
+        if only_topic and message["topic_idx"] != only_topic:
             continue
-        if until_topic and message['topic_idx'] == until_topic:
+        if until_topic and message["topic_idx"] == until_topic:
             break
 
         if message["type"] == "question":
@@ -66,7 +71,7 @@ def chat_to_string_v002(
             if emit_next_answer:
                 topic_history += f'Interviewee: "{message["content"]}"\n'
                 # reset so we only take the first following answer per question
-                emit_next_answer = (question_orders is None)
+                emit_next_answer = question_orders is None
 
     return topic_history.strip()
 
@@ -76,8 +81,8 @@ def fill_prompt_with_interview_v002(
     step: Dict[str, any],
     global_prompt: str,
     history: List[Message],
-    history_indices: List[int] = None
-) -> str: 
+    history_indices: List[int] = None,
+) -> str:
     """
     Construct a prompt for OpenAI chat API:
     - Start with the global/system prompt.
@@ -86,9 +91,11 @@ def fill_prompt_with_interview_v002(
     """
 
     state = history[-1]
-    current_order_index = int(state['order'])
+    current_order_index = int(state["order"])
     if history_indices is None:
-        history_for_prompt = chat_to_string_v002(history, question_orders=history_indices)
+        history_for_prompt = chat_to_string_v002(
+            history, question_orders=history_indices
+        )
     else:
         history_for_prompt = chat_to_string_v002(history)
 
@@ -102,43 +109,45 @@ def fill_prompt_with_interview_v002(
 
     return prompt
 
-def fill_prompt_with_interview(template:str, topics:list, history:list, user_message:str=None) -> str:
-    """ Fill the prompt template with parameters from current interview. """
+
+def fill_prompt_with_interview(
+    template: str, topics: list, history: list, user_message: str = None
+) -> str:
+    """Fill the prompt template with parameters from current interview."""
     state = history[-1]
-    current_topic_idx = min(int(state['topic_idx']), len(topics))
+    current_topic_idx = min(int(state["topic_idx"]), len(topics))
     next_topic_idx = min(current_topic_idx + 1, len(topics))
     current_topic_chat = chat_to_string(history, only_topic=current_topic_idx)
     prompt = template.format(
-        topics='\n'.join([topic['topic'] for topic in topics]),
+        topics="\n".join([topic["topic"] for topic in topics]),
         question=state["content"],
         answer=user_message,
-        summary=state['summary'] or chat_to_string(history, until_topic=current_topic_idx),
+        summary=state["summary"]
+        or chat_to_string(history, until_topic=current_topic_idx),
         current_topic=topics[current_topic_idx - 1]["topic"],
         next_interview_topic=topics[next_topic_idx - 1]["topic"],
-        current_topic_history=current_topic_chat
+        current_topic_history=current_topic_chat,
     )
     logging.info(f"Prompt to GPT:\n{prompt}")
     assert not re.findall(r"\{[^{}]+\}", prompt)
-    return prompt 
+    return prompt
 
 
-
-def execute_queries(query, task_args:dict) -> dict:
-    """ 
+def execute_queries(query, task_args: dict) -> dict:
+    """
     Execute queries (concurrently if multiple).
 
     Args:
         query: function to execute
         task_args: (dict) of arguments for each task's query
     Returns:
-        suggestions (dict): {task: output} 
+        suggestions (dict): {task: output}
     """
     st = time.time()
     suggestions = {}
     with ThreadPoolExecutor(max_workers=len(task_args)) as executor:
         futures = {
-            executor.submit(query, **kwargs): task 
-                for task, kwargs in task_args.items()
+            executor.submit(query, **kwargs): task for task, kwargs in task_args.items()
         }
         for future in as_completed(futures):
             task = futures[future]
@@ -150,13 +159,20 @@ def execute_queries(query, task_args:dict) -> dict:
     return suggestions
 
 
-def _extract_content(resp) -> str:
-    """
-    Safely extract assistant content from either object- or dict-like responses.
-    """
-    try:
-        # SDK object style
-        return resp.choices[0].message.content
-    except Exception:
-        # Dict style fallback
-        return resp["choices"][0]["message"]["content"]
+# ------------ DB Helper Functions -------------#
+# TODO SHould be a new database protocol class (or removed entirely because these are just one-liners....)
+
+
+def load_interview_session(session_id: str) -> dict:
+    """Return interview session history to user."""
+    return db.load_remote_session(session_id)
+
+
+def delete_interview_session(session_id: str):
+    """Delete existing interview saved to database."""
+    db.delete_remote_session(session_id)
+
+
+def retrieve_sessions(db, sessions: list = None) -> dict:
+    """Return specified or all existing interview sessions."""
+    return db.retrieve_sessions(sessions)

@@ -41,7 +41,6 @@ class DynamoDB(object):
 
     def update_remote_session(self, session_id: str, session: list):
         """Update or insert session data in the database."""
-        assert "session_id" in session[-1] and session[-1]["session_id"] == session_id
         self.table.put_item(Item={"session_id": session_id, "session": session})
         logging.info(f"Session '{session_id}' updated!")
 
