@@ -107,6 +107,7 @@ def fill_prompt_with_interview_v002(
         f"Interview History:\n{history_for_prompt}\n\n"
         f"Instructions for next question:\n{step['system']}\n"
     )
+
     logging.info(f"Prompt to GPT:\n{prompt}")
 
     return prompt

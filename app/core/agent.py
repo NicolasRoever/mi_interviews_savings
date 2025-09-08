@@ -52,7 +52,7 @@ class LLMAgent(object):
         logging.info(f"History is: {interview_manager.history}")
 
         prompt = fill_prompt_with_interview_v002(
-            step=interview_manager.parameters,
+            step=step,
             global_prompt=interview_manager.parameters["global_mi_system_prompt"],
             history=interview_manager.history,
             history_indices=step.get("history_indices", None),
