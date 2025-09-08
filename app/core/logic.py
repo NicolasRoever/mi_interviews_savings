@@ -4,7 +4,6 @@ from parameters import INTERVIEW_PARAMETERS, OPENAI_API_KEY
 from core.manager import InterviewManager
 from core.agent import LLMAgent
 from database.dynamo import DynamoDB, connect_to_database
-from lambda_handler import db, agent
 from typing import Union
 from database.file import FileWriter
 
@@ -30,9 +29,12 @@ def next_question(
     """
 
     interview_manager = InterviewManager(db=db, session_id=session_id)
+    params = interview_parameters[interview_id]
 
     # Resume if interview has started, otherwise begin (new) session
     try:
+        interview_manager.resume_session(parameters=params)
+
         interview = resume_interview_session(session_id, interview_id, user_message)
         parameters = interview.parameters
     except AssertionError:
@@ -79,16 +81,6 @@ def next_question(
 # ------------ Helper Functions -------------#
 
 
-def load_interview_session(session_id: str) -> dict:
-    """Return interview session history to user."""
-    return db.load_remote_session(session_id)
-
-
-def delete_interview_session(session_id: str):
-    """Delete existing interview saved to database."""
-    db.delete_remote_session(session_id)
-
-
 def resume_interview_session(
     session_id: str, interview_id: str, user_message: str
 ) -> InterviewManager:
@@ -122,14 +114,28 @@ def begin_interview_session(session_id: str, interview_id: str) -> dict:
     return {"session_id": session_id, "interview_id": interview_id, "message": message}
 
 
-def retrieve_sessions(db: Union[DynamoDB, FileWriter], sessions: list = None) -> dict:
-    """Return specified or all existing interview sessions."""
-    return db.retrieve_sessions(sessions)
-
-
 def transcribe(audio: str, agent: LLMAgent) -> dict:
     """Return audio file transcription using OpenAI Whisper API"""
     logging.critical(f"Audio is: {type(audio)}...")
     transcription = agent.transcribe(audio)
     logging.info(f"Returning transcription text: '{transcription}'")
     return {"transcription": transcription}
+
+
+# ------------ DB Helper Functions -------------#
+# TODO SHould be a new database protocol class (or removed entirely because these are just one-liners....)
+
+
+def load_interview_session(session_id: str) -> dict:
+    """Return interview session history to user."""
+    return db.load_remote_session(session_id)
+
+
+def delete_interview_session(session_id: str):
+    """Delete existing interview saved to database."""
+    db.delete_remote_session(session_id)
+
+
+def retrieve_sessions(db: Union[DynamoDB, FileWriter], sessions: list = None) -> dict:
+    """Return specified or all existing interview sessions."""
+    return db.retrieve_sessions(sessions)

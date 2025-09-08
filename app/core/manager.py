@@ -1,7 +1,8 @@
 from datetime import datetime
 import logging
-from typing import Any, Dict, Callable, Optional
+from typing import Any, Dict, Callable, Optional, Union
 from app.database.dynamo import DynamoDB
+from app.database.file import FileWriter
 
 
 class InterviewManager(object):
@@ -14,7 +15,7 @@ class InterviewManager(object):
         session_id: (str) unique interview session key
     """
 
-    def __init__(self, db: DynamoDB, session_id: str):
+    def __init__(self, db: Union[DynamoDB, FileWriter], session_id: str):
 
         self.db = db
         self.session_id = session_id
@@ -39,13 +40,12 @@ class InterviewManager(object):
         self.parameters = parameters
 
     def resume_session(self, parameters: dict):
-        """Load (remote) history into current Interview object."""
+        """Load remote history into this Interview object."""
         self.history = self.db.load_remote_session(self.session_id)
-        logging.info(f"Current contents of database history: {self.history}")
-        # assert len(self.history) >= 1
-        # assert self.history[-1].get('session_id') == self.session_id
-        # Set current state equal to last
+        # last known state
         self.current_state = self.history[-1].copy()
+        # NOTE: better to persist parameters in DB and load them;
+        # if not, passing them in here is acceptable for now
         self.parameters = parameters
 
     def get_history(self):
