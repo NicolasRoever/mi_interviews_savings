@@ -7,7 +7,9 @@ from core.auxiliary import (
     fill_prompt_with_interview_v002,
     chat_to_string_v002,
     _extract_content,
+    get_step_by_question_name,
 )
+from core.error_handling import check_data_is_not_empty
 from io import BytesIO
 from base64 import b64decode
 from openai import OpenAI
@@ -39,16 +41,15 @@ class LLMAgent(object):
         """
         logging.info("Executing query v002...")
         current_question = interview_manager.current_state["question_name"]
+        logging.info(f"Current question is: {current_question}")
 
-        step = next(
-            (
-                d
-                for d in interview_manager.parameters["interview_plan"]
-                if d.get("question_name") == current_question
-            ),
-            None,
+        step = get_step_by_question_name(
+            parameters=interview_manager.parameters, question_name=current_question
         )
-        logging.info(f"Current step data is: {step}")
+        check_data_is_not_empty(data=step, name="Data for current question step")
+
+        logging.info(f"Step data retrieved is: {step}")
+        logging.info(f"History is: {interview_manager.history}")
 
         prompt = fill_prompt_with_interview_v002(
             step=interview_manager.parameters,

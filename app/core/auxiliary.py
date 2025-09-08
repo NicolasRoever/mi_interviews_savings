@@ -19,7 +19,7 @@ def chat_to_string(chat: list, only_topic: int = None, until_topic: int = None) 
         if until_topic and message["topic_idx"] == until_topic:
             break
         if message["type"] == "question":
-            topic_history += f"Interviewer: '{message["content"]}'\n"
+            topic_history += f"Interviewer: '{message['content']}'\n"
         if message["type"] == "answer":
             topic_history += f"Interviewee: '{message['content']}'\n"
     return topic_history.strip()
@@ -88,15 +88,18 @@ def fill_prompt_with_interview_v002(
     - Insert interview history messages (user + assistant turns).
     - Append the current step's instructions as a system message.
     """
-
-    state = history[-1]
-    current_order_index = int(state["order"])
+    logging.info("Filling prompt with interview v002...")
+    logging.info(f"Step data is: {step}")
+    logging.info(f"History indices are: {history_indices}")
+    logging.info(f"History data is: {history}")
     if history_indices is None:
         history_for_prompt = chat_to_string_v002(
             history, question_orders=history_indices
         )
     else:
         history_for_prompt = chat_to_string_v002(history)
+
+    logging.info(f"History for prompt is: {history_for_prompt}")
 
     # Build a string with the current interview state and history
     prompt = (
@@ -161,3 +164,17 @@ def execute_queries(query, task_args: dict) -> dict:
 def _extract_content(response: dict) -> str:
     """Extract content from OpenAI response."""
     return response["choices"][0]["message"]["content"].strip("\n\" '''")
+
+
+def get_step_by_question_name(
+    parameters: Dict[str, Any], question_name: str
+) -> Dict[str, Any]:
+    """
+    Given a *single interview* parameters dict (the one that contains 'interview_plan'),
+    return the step dict whose 'question_name' matches. Raises KeyError if not found.
+    """
+    plan = parameters["interview_plan"]
+    for step in plan:
+        if step.get("question_name") == question_name:
+            return step
+    raise KeyError(f"question_name '{question_name}' not found")

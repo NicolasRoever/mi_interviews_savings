@@ -1,10 +1,11 @@
 from openai import OpenAI
 import re
 from typing import Optional, Tuple, Dict, Any, Callable, List
-from helper import _extract_content, _render
+from agent.helper import _extract_content, _render
 
 
 # ---- tiny engine (no validators, no LLM) ----
+
 
 def run_flow(
     *,
@@ -52,23 +53,14 @@ def run_flow(
 
     return ctx
 
+
 # ---- demo I/O ----
 def get_user_reply_cli(_prompt_to_user: str) -> str:
     return input("YOU: ")
 
 
+# --------LLM Step---------#
 
-
-
-
-
-
-
-
-
-
-
-#--------LLM Step---------#
 
 def llm_step(
     *,
@@ -83,10 +75,13 @@ def llm_step(
     calls the old chat.completions API, and returns the assistant's text.
     """
     system_txt = _render(step.get("system", ""), ctx)
-    dev_txt    = _render(step.get("developer", ""), ctx)
+    dev_txt = _render(step.get("developer", ""), ctx)
 
     messages = [
-        {'role': 'system', 'content': f"Past Interview History: \n {ctx.get('history', '')} \n------------------------------"}
+        {
+            "role": "system",
+            "content": f"Past Interview History: \n {ctx.get('history', '')} \n------------------------------",
+        }
     ]
     if system_txt:
         messages.append({"role": "system", "content": system_txt})
@@ -103,15 +98,14 @@ def llm_step(
         model=model,
         messages=messages,
         reasoning_effort="minimal",
-        max_completion_tokens=step.get("max_completion_tokens", 300)
+        max_completion_tokens=step.get("max_completion_tokens", 300),
     )
     draft = _extract_content(resp)
 
     print("\n--- OpenAI Response ---")
     print(resp)
 
-
-    #Validate Question if validator present
+    # Validate Question if validator present
     validator = step.get("validator")
     if callable(validator) and not validator(draft):
         fallback = step.get("fallback") or ""
@@ -119,19 +113,6 @@ def llm_step(
         return fallback.strip()
 
     return draft.strip()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 # ---------- System Prompt (you can pass a different one per call) ----------
@@ -144,26 +125,22 @@ GENERAL_SYSTEM_PROMPT = (
     "how important would you say it is for you to increase your savings?"
 )
 
+
 # ---------- Content validator (literal match; adjustable if you want variants) ----------
 def contains_scaling_question(text: str) -> bool:
     """
     Checks for the presence of one of the key phrases in the scaling question.
     """
-    pattern = (
-        r"'extremely important'"
-    )
+    pattern = r"'extremely important'"
     return bool(re.search(pattern, text, flags=re.IGNORECASE))
+
 
 def correct_scaling_followup(text: str) -> bool:
     """
     Checks for the presence of one of the key phrases in the scaling question.
     """
-    pattern = (
-        r"Why is it a "
-    )
+    pattern = r"Why is it a "
     return bool(re.search(pattern, text, flags=re.IGNORECASE))
-
-
 
 
 # ---------- One-shot OpenAI call (no inner defs) ----------
@@ -192,15 +169,14 @@ def openai_generate_mi_turn(
         print("----------------------\n")
 
     resp = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        reasoning_effort = "minimal"
+        model=model, messages=messages, reasoning_effort="minimal"
     )
 
     print("\n--- OpenAI Response ---")
     print(resp)
 
-    return resp # already a dict
+    return resp  # already a dict
+
 
 # ---------- Main function you asked to adjust (stateless, no inner defs) ----------
 def ask_scaling_question(

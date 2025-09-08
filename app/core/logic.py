@@ -71,8 +71,6 @@ def begin_interview_session(
     parameters: dict,
 ) -> dict:
     """Return response with starting question of new interview session."""
-    if not INTERVIEW_PARAMETERS.get(interview_id):
-        raise ValueError(f"Invalid interview parameters '{interview_id}' specified!")
     interview_manager.begin_session(parameters=parameters)
     message = parameters["first_question"]
     interview_manager.add_chat_to_session(message, type="question")
