@@ -5,6 +5,8 @@ from database.dynamo import DynamoDB
 from database.file import FileWriter
 import time
 
+from core.auxiliary import get_step_by_question_name
+
 
 class InterviewManager(object):
     """
@@ -51,13 +53,8 @@ class InterviewManager(object):
         self.parameters = parameters
 
     def update_parameters_after_question(self, question_name: str):
-        current_step = next(
-            (
-                d
-                for d in self.parameters["interview_plan"]
-                if d.get("question_name") == question_name
-            ),
-            None,
+        current_step = get_step_by_question_name(
+            parameters=self.parameters, question_name=question_name
         )
 
         self.current_state["question_name"] = current_step.get("next_question", None)

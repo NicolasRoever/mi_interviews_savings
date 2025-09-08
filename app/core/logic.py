@@ -28,10 +28,12 @@ def next_question(
         response: (dict) containing `message` from interviewer
     """
 
+    # Setup
     interview_manager = InterviewManager(db=db, session_id=session_id)
     params = interview_parameters[interview_id]
     agent.parameters = params
 
+    # Check if we need to begin a new session
     has_history = bool(db.load_remote_session(session_id))
     if has_history is False:
         return begin_interview_session(
@@ -40,12 +42,9 @@ def next_question(
             interview_manager=interview_manager,
             parameters=params,
         )
+
     else:
         interview_manager.resume_session(parameters=params)
-
-    # Exit condition: this interview has been previously ended
-    if interview_manager.current_state["terminated"]:
-        return {"session_id": session_id, "message": params["termination_message"]}
 
     interview_manager.add_chat_to_session(
         message=user_message, type="answer"
@@ -57,6 +56,10 @@ def next_question(
     interview_manager.update_parameters_after_question(
         question_name=interview_manager.current_state["question_name"]
     )
+
+    # Check if this was the last question
+    if interview_manager.current_state["question_name"] == "last_question":
+        return {"session_id": session_id, "message": params["termination_message"]}
 
     return {"session_id": session_id, "message": next_question}
 
