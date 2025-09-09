@@ -20,6 +20,7 @@ Current Things to think about:
 - The db functions (currently in lambda_handler.py at the bottom) are trash
 - There is an issue with the load_remote_session (should return list, returns dict)
 - Think about the logic in the main logic function, does not seem ideal (start/continue/finish)
+- History Indices do not work right now
 
 
 ### Here is the current history database structure:
