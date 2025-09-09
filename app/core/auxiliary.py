@@ -15,52 +15,49 @@ Message = Dict[str, str]
 
 def chat_to_string_v002(
     chat: List[Dict[str, Any]],
-    only_topic: int = None,
-    until_topic: int = None,
-    question_orders: Optional[Iterable[int]] = None,  # NEW (optional)
+    history_indices: Optional[Iterable[int]] = None,
 ) -> str:
-    """Convert messages from chat into one string.
-    If `question_orders` is provided, include ONLY those questions (by `order`)
-    and their first following answers.
     """
-    topic_history = ""
-    # track whether the *next* answer should be emitted (only when its question matched)
-    emit_next_answer = question_orders is None
-    allowed_orders = (
-        set(map(int, question_orders)) if question_orders is not None else None
-    )
+    Render chat history as lines like:
+      Interviewer: "..."
+      Interviewee: "..."
 
-    for message in chat:
-        # If desire specific topic's chat history:
-        if only_topic and message["topic_idx"] != only_topic:
+    - If `history_indices` is None, include the whole history.
+    - If `history_indices` is provided, include only messages whose `order`
+      (int) is in that list.
+    """
+    if not chat:
+        return ""
+
+    allowed: Optional[set[int]] = None
+    if history_indices is not None:
+        allowed = {int(i) for i in history_indices}
+
+    lines: List[str] = []
+    for msg in chat:
+        # Filter by indices if provided
+        ord_val = msg.get("order")
+        if isinstance(ord_val, Decimal):
+            ord_val = int(ord_val)
+        elif isinstance(ord_val, (int, float, str)) and ord_val is not None:
+            ord_val = int(ord_val)
+        else:
+            # If order missing or unusable, skip when filtering; include when not filtering
+            if allowed is not None:
+                continue
+
+        if allowed is not None and ord_val not in allowed:
             continue
-        if until_topic and message["topic_idx"] == until_topic:
-            break
 
-        if message["type"] == "question":
-            # if filtering by question_orders, check this question's `order`
-            if allowed_orders is not None:
-                ord_val = message.get("order")
-                if isinstance(ord_val, Decimal):
-                    ord_val = int(ord_val)
-                # decide whether to include this question (and its following answer)
-                if ord_val in allowed_orders:
-                    topic_history += f'Interviewer: "{message["content"]}"\n'
-                    emit_next_answer = True
-                else:
-                    emit_next_answer = False
-            else:
-                topic_history += f'Interviewer: "{message["content"]}"\n'
-                emit_next_answer = True
+        role = msg.get("type")
+        content = msg.get("content", "")
+        if role == "question":
+            lines.append(f'Interviewer: "{content}"')
+        elif role == "answer":
+            lines.append(f'Interviewee: "{content}"')
+        # ignore other types silently
 
-        if message["type"] == "answer":
-            # only include the answer if we included the preceding question
-            if emit_next_answer:
-                topic_history += f'Interviewee: "{message["content"]}"\n'
-                # reset so we only take the first following answer per question
-                emit_next_answer = question_orders is None
-
-    return topic_history.strip()
+    return "\n".join(lines).strip()
 
 
 def fill_prompt_with_interview_v002(

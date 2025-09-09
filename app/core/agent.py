@@ -52,6 +52,7 @@ class LLMAgent(object):
             global_prompt=interview_manager.parameters["global_mi_system_prompt"],
             history=interview_manager.history,
             history_indices=step.get("history_indices", None),
+            include_global_prompt=step.get("include_global_prompt", True),
         )
 
         text, full_response = call_openai_responses(
