@@ -58,6 +58,12 @@ class InterviewManager(object):
         )
 
         self.current_state["question_name"] = current_step.get("next_question", None)
+        self.update_session()
+
+    def update_session(self):
+        """Update current state in remote database"""
+        self.history[-1] = self.current_state
+        self.db.update_remote_session(self.session_id, self.history)
 
     def get_history(self):
         """Return interview session history."""
@@ -141,8 +147,3 @@ class InterviewManager(object):
     def update_probe(self):
         """Having probed within topic, simply increment question counter."""
         self.current_state["question_idx"] += 1
-
-    def update_session(self):
-        """Update current state in remote database"""
-        self.history[-1] = self.current_state
-        self.db.update_remote_session(self.session_id, self.history)

@@ -165,7 +165,6 @@ def handler(event, context):
 
     if route not in routes:
         return _resp(404, {"error": "unknown_route"})
-
     try:
         result = routes[route](payload)
         return _resp(200, result)
