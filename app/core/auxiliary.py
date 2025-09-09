@@ -69,10 +69,11 @@ def fill_prompt_with_interview_v002(
     global_prompt: str,
     history: List[Message],
     history_indices: List[int] = None,
+    include_global_prompt: bool = True,
 ) -> str:
     """
     Construct a prompt for OpenAI chat API:
-    - Start with the global/system prompt.
+    - Optionally start with the global/system prompt.
     - Insert interview history messages (user + assistant turns).
     - Append the current step's instructions as a system message.
     """
@@ -80,7 +81,7 @@ def fill_prompt_with_interview_v002(
     logging.info(f"Step data is: {step}")
     logging.info(f"History indices are: {history_indices}")
     logging.info(f"History data is: {history}")
-    if history_indices is None:
+    if history_indices:
         history_for_prompt = chat_to_string_v002(
             history, question_orders=history_indices
         )
@@ -89,12 +90,13 @@ def fill_prompt_with_interview_v002(
 
     logging.info(f"History for prompt is: {history_for_prompt}")
 
-    # Build a string with the current interview state and history
-    prompt = (
-        f"{global_prompt}\n\n"
-        f"Interview History:\n{history_for_prompt}\n\n"
-        f"Instructions for next question:\n{step['system']}\n"
-    )
+    prompt_parts = []
+    if include_global_prompt:
+        prompt_parts.append(global_prompt)
+    prompt_parts.append(f"Interview History:\n{history_for_prompt}")
+    prompt_parts.append(f"Instructions for next question:\n{step['system']}\n")
+
+    prompt = "\n\n".join(prompt_parts)
 
     logging.info(f"Prompt to GPT:\n{prompt}")
 
