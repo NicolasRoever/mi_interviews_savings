@@ -8,6 +8,8 @@ from datetime import datetime
 import json
 import logging
 from typing import Any, Dict, Tuple
+from core.agent import LLMAgent
+from core.manager import InterviewManager
 from openai import APIStatusError, APIConnectionError, AuthenticationError, OpenAI
 
 Message = Dict[str, str]
@@ -74,18 +76,14 @@ def fill_prompt_with_interview_v002(
     - Insert interview history messages (user + assistant turns).
     - Append the current step's instructions as a system message.
     """
-    logging.info("Filling prompt with interview v002...")
     logging.info(f"Step data is: {step}")
-    logging.info(f"History indices are: {history_indices}")
     logging.info(f"History data is: {history}")
     if history_indices:
         history_for_prompt = chat_to_string_v002(
-            history, question_orders=history_indices
+            history, history_indices=history_indices
         )
     else:
         history_for_prompt = chat_to_string_v002(history)
-
-    logging.info(f"History for prompt is: {history_for_prompt}")
 
     prompt_parts = []
     if include_global_prompt:
@@ -98,16 +96,6 @@ def fill_prompt_with_interview_v002(
     logging.info(f"Prompt to GPT:\n{prompt}")
 
     return prompt
-
-
-def _preview(val: Any, limit: int = 600) -> str:
-    if isinstance(val, str):
-        return (val[:limit] + "…") if len(val) > limit else val
-    try:
-        s = json.dumps(val, ensure_ascii=False)
-        return (s[:limit] + "…") if len(s) > limit else s
-    except Exception:
-        return f"<{type(val).__name__}>"
 
 
 def get_step_by_question_name(
@@ -177,3 +165,36 @@ def call_openai_responses(
     except Exception as e:
         log.error("OpenAI unexpected error: %s", e)
         raise
+
+
+def _preview(val: Any, limit: int = 600) -> str:
+    if isinstance(val, str):
+        return (val[:limit] + "…") if len(val) > limit else val
+    try:
+        s = json.dumps(val, ensure_ascii=False)
+        return (s[:limit] + "…") if len(s) > limit else s
+    except Exception:
+        return f"<{type(val).__name__}>"
+
+
+def _warm_openai(agent: LLMAgent) -> None:
+    """Warm the OpenAI client to hide cold-start latency."""
+    try:
+        manager = InterviewManager(db=None, session_id="warmup")
+        manager.begin_session(
+            parameters={
+                "global_mi_system_prompt": "",
+                "interview_plan": [
+                    {
+                        "question_name": "warmup",
+                        "system": "Reply with a short acknowledgment.",
+                        "model": "gpt-5-nano-2025-08-07",
+                        "max_output_tokens": 5,
+                    }
+                ],
+                "first_ai_question_name": "warmup",
+            }
+        )
+        agent.execute_query_v002(manager)
+    except Exception:
+        pass

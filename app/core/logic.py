@@ -6,6 +6,8 @@ from core.agent import LLMAgent
 from database.dynamo import DynamoDB, connect_to_database
 from typing import Union
 from database.file import FileWriter
+from core.auxiliary import _warm_openai
+from openai import OpenAI
 
 
 # ------------ Main Interview Logic Function -------------#
@@ -36,6 +38,9 @@ def next_question(
     # Check if we need to begin a new session
     has_history = bool(db.load_remote_session(session_id))
     if has_history is False:
+        _warm_openai(
+            agent=agent
+        )  # Sends a first ping to the OpenAI API to hide cold-start latency
         return begin_interview_session(
             session_id=session_id,
             interview_id=interview_id,
