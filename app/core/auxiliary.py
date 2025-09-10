@@ -8,8 +8,6 @@ from datetime import datetime
 import json
 import logging
 from typing import Any, Dict, Tuple
-from core.agent import LLMAgent
-from core.manager import InterviewManager
 from openai import APIStatusError, APIConnectionError, AuthenticationError, OpenAI
 
 Message = Dict[str, str]

@@ -3,9 +3,10 @@ import os
 from parameters import INTERVIEW_PARAMETERS, OPENAI_API_KEY
 from core.manager import InterviewManager
 from core.agent import LLMAgent
-from database.dynamo import DynamoDB, connect_to_database
+from database.dynamo import DynamoDB
 from typing import Union
 from database.file import FileWriter
+import threading
 
 
 # ------------ Main Interview Logic Function -------------#
@@ -36,7 +37,11 @@ def next_question(
     # Check if we need to begin a new session
     has_history = bool(db.load_remote_session(session_id))
     if has_history is False:
-        _warm_openai(agent=agent)
+        threading.Thread(
+            target=_warm_openai,
+            kwargs={"agent": agent},
+            daemon=True,  # won't block process exit
+        ).start()
         return begin_interview_session(
             session_id=session_id,
             interview_id=interview_id,
@@ -106,7 +111,7 @@ def _warm_openai(agent: LLMAgent) -> None:
                         "question_name": "warmup",
                         "system": "Reply with a short acknowledgment.",
                         "model": "gpt-5-nano-2025-08-07",
-                        "max_output_tokens": 5,
+                        "max_output_tokens": 20,
                     }
                 ],
                 "first_ai_question_name": "warmup",
