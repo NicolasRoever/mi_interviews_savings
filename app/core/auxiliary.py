@@ -147,6 +147,7 @@ def call_openai_responses(
     log.debug("Prompt preview: %s", _preview(prompt))
 
     try:
+        start = time.perf_counter()
         resp = client.responses.create(
             model=model,
             input=prompt,
@@ -154,7 +155,8 @@ def call_openai_responses(
             max_output_tokens=max_output_tokens,
         )
         text = (getattr(resp, "output_text", None) or "").strip()
-        log.info("OpenAI output_text present: %s", bool(text))
+        elapsed = time.perf_counter() - start
+        log.info("OpenAI call completed in %.3f seconds", elapsed)
         log.debug("OpenAI raw response: %s", resp)
         return text, resp
 
