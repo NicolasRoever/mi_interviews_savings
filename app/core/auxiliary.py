@@ -175,26 +175,3 @@ def _preview(val: Any, limit: int = 600) -> str:
         return (s[:limit] + "…") if len(s) > limit else s
     except Exception:
         return f"<{type(val).__name__}>"
-
-
-def _warm_openai(agent: LLMAgent) -> None:
-    """Warm the OpenAI client to hide cold-start latency."""
-    try:
-        manager = InterviewManager(db=None, session_id="warmup")
-        manager.begin_session(
-            parameters={
-                "global_mi_system_prompt": "",
-                "interview_plan": [
-                    {
-                        "question_name": "warmup",
-                        "system": "Reply with a short acknowledgment.",
-                        "model": "gpt-5-nano-2025-08-07",
-                        "max_output_tokens": 5,
-                    }
-                ],
-                "first_ai_question_name": "warmup",
-            }
-        )
-        agent.execute_query_v002(manager)
-    except Exception:
-        pass

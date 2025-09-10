@@ -6,8 +6,6 @@ from core.agent import LLMAgent
 from database.dynamo import DynamoDB, connect_to_database
 from typing import Union
 from database.file import FileWriter
-from core.auxiliary import _warm_openai
-from openai import OpenAI
 
 
 # ------------ Main Interview Logic Function -------------#
@@ -38,9 +36,7 @@ def next_question(
     # Check if we need to begin a new session
     has_history = bool(db.load_remote_session(session_id))
     if has_history is False:
-        _warm_openai(
-            agent=agent
-        )  # Sends a first ping to the OpenAI API to hide cold-start latency
+        _warm_openai(agent=agent)
         return begin_interview_session(
             session_id=session_id,
             interview_id=interview_id,
@@ -96,3 +92,26 @@ def transcribe(audio: str, agent: LLMAgent) -> dict:
     transcription = agent.transcribe(audio)
     logging.info(f"Returning transcription text: '{transcription}'")
     return {"transcription": transcription}
+
+
+def _warm_openai(agent: LLMAgent) -> None:
+    """Warm the OpenAI client to hide cold-start latency."""
+    try:
+        manager = InterviewManager(db=None, session_id="warmup")
+        manager.begin_session(
+            parameters={
+                "global_mi_system_prompt": "",
+                "interview_plan": [
+                    {
+                        "question_name": "warmup",
+                        "system": "Reply with a short acknowledgment.",
+                        "model": "gpt-5-nano-2025-08-07",
+                        "max_output_tokens": 5,
+                    }
+                ],
+                "first_ai_question_name": "warmup",
+            }
+        )
+        agent.execute_query_v002(manager)
+    except Exception:
+        pass
