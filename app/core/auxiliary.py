@@ -9,6 +9,7 @@ import json
 import logging
 from typing import Any, Dict, Tuple
 from openai import APIStatusError, APIConnectionError, AuthenticationError, OpenAI
+from core.error_handling import handle_openai_error
 
 Message = Dict[str, str]
 
@@ -132,20 +133,12 @@ def call_openai_responses(
     model: str = "gpt-4o-mini",
     max_output_tokens: int = 200,
     reasoning_effort: str = "minimal",
-    log: logging.Logger | None = None,
 ) -> Tuple[str, Any]:
     """
     Calls the Responses API and returns (output_text, raw_response),
     while emitting detailed diagnostics for common failures.
     """
-    log = log or logging.getLogger(__name__)
-    log.info(
-        "OpenAI request (Responses): model=%s max_output_tokens=%s reasoning_effort=%s",
-        model,
-        max_output_tokens,
-        reasoning_effort,
-    )
-    log.debug("Prompt preview: %s", _preview(prompt))
+    logging.debug("Prompt preview: %s", _preview(prompt))
 
     try:
         start = time.perf_counter()
@@ -157,27 +150,12 @@ def call_openai_responses(
         )
         text = (getattr(resp, "output_text", None) or "").strip()
         elapsed = time.perf_counter() - start
-        log.info("OpenAI call completed in %.3f seconds", elapsed)
-        log.debug("OpenAI raw response: %s", resp)
+        logging.info("OpenAI call completed in %.3f seconds", elapsed)
+        logging.debug("OpenAI raw response: %s", resp)
         return text, resp
 
-    except APIStatusError as e:
-        # 400s & friends: the JSON body tells you exactly what's wrong
-        try:
-            details = e.response.json()
-        except Exception:
-            details = getattr(e, "response", None)
-        log.error("OpenAI APIStatusError %s: %s", e.status_code, details)
-        raise
-    except AuthenticationError as e:
-        log.error("OpenAI AuthenticationError: %s", e)
-        raise
-    except APIConnectionError as e:
-        log.error("OpenAI APIConnectionError: %s", e)
-        raise
     except Exception as e:
-        log.error("OpenAI unexpected error: %s", e)
-        raise
+        handle_openai_error(e)
 
 
 def _preview(val: Any, limit: int = 600) -> str:
