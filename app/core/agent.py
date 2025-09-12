@@ -58,7 +58,7 @@ class LLMAgent(object):
             client=self.client,
             prompt=prompt,
             model=step.get("model", "gpt-5-nano-2025-08-07"),
-            max_output_tokens=step.get("max_output_tokens", 300),
+            max_output_tokens=step.get("max_output_tokens", 200),
             reasoning_effort=step.get("reasoning_effort", "minimal"),
         )
 

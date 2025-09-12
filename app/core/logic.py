@@ -101,6 +101,7 @@ def transcribe(audio: str, agent: LLMAgent) -> dict:
 
 def _warm_openai(agent: LLMAgent) -> None:
     """Warm the OpenAI client to hide cold-start latency."""
+    logging.info("Warming OpenAI client...")
     try:
         manager = InterviewManager(db=None, session_id="warmup")
         manager.begin_session(

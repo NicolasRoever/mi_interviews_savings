@@ -25,7 +25,7 @@ def _resp(status: int, body: dict) -> dict:
 
 
 db = connect_to_database()
-openai_client = OpenAI(api_key=OPENAI_API_KEY, timeout=30, max_retries=3)
+openai_client = OpenAI(api_key=OPENAI_API_KEY, timeout=45, max_retries=3)
 agent = LLMAgent(openai_client=openai_client)
 
 

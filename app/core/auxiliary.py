@@ -25,29 +25,44 @@ def chat_to_string_v002(
     - If `history_indices` is None, include the whole history.
     - If `history_indices` is provided, include only messages whose `order`
       (int) is in that list.
+    - Negative indices are interpreted relative to the end of the chat
+      (like Python list indexing).
     """
     if not chat:
         return ""
 
-    allowed: Optional[set[int]] = None
-    if history_indices is not None:
-        allowed = {int(i) for i in history_indices}
-
-    lines: List[str] = []
+    # Precompute list of available order values in sequence
+    orders: List[int] = []
     for msg in chat:
-        # Filter by indices if provided
         ord_val = msg.get("order")
         if isinstance(ord_val, Decimal):
             ord_val = int(ord_val)
         elif isinstance(ord_val, (int, float, str)) and ord_val is not None:
             ord_val = int(ord_val)
         else:
-            # If order missing or unusable, skip when filtering; include when not filtering
-            if allowed is not None:
-                continue
+            ord_val = None
+        orders.append(ord_val)
 
-        if allowed is not None and ord_val not in allowed:
-            continue
+    allowed: Optional[set[int]] = None
+    if history_indices is not None:
+        resolved = []
+        n = len(chat)
+        for idx in history_indices:
+            if idx < 0:  # negative index: count from end
+                pos = n + idx  # e.g. -1 -> n-1
+                if 0 <= pos < n:
+                    if orders[pos] is not None:
+                        resolved.append(orders[pos])
+            else:
+                resolved.append(int(idx))
+        allowed = set(resolved)
+
+    lines: List[str] = []
+    for i, msg in enumerate(chat):
+        ord_val = orders[i]
+        if allowed is not None:
+            if ord_val is None or ord_val not in allowed:
+                continue
 
         role = msg.get("type")
         content = msg.get("content", "")

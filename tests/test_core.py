@@ -394,6 +394,19 @@ def test_chat_to_string_v002_full_history(chat_history):
     assert actual == expected
 
 
+def test_chat_to_string_v002_negative_indices(chat_history):
+    # -2 -> second last item (order=21), -3 -> third last (order=20), 2 -> order=2
+    result = chat_to_string_v002(chat_history, history_indices=[-2, -3, 2])
+
+    expected = (
+        'Interviewee: "Currently, I am not saving money, because I am earning so little and prices are so high, that I just cant."\n'
+        'Interviewee: "I am usually a quite dedicated person. But with savings, there are just unexpected things happening, where I really cannot do anything."\n'
+        'Interviewer: "You’ve already given some thoughtful reflections on what has helped before and what tends to derail saving. Thinking about next steps, what ideas do you have for saving more money, given your current situation? What small changes could you try first, and what would make them feel doable for you?"'
+    )
+
+    assert result == expected
+
+
 def test_chat_to_string_v002_history_indices_7_8(chat_history):
     chat = chat_history
 
