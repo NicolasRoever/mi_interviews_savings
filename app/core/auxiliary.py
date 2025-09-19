@@ -8,8 +8,17 @@ from datetime import datetime
 import json
 import logging
 from typing import Any, Dict, Tuple
-from openai import APIStatusError, APIConnectionError, AuthenticationError, OpenAI
-from core.error_handling import handle_openai_error
+from openai import (
+    APIStatusError,
+    APIConnectionError,
+    AuthenticationError,
+    OpenAI,
+    AsyncOpenAI,
+)
+from dataclasses import dataclass
+from core.error_handling import handle_openai_error, check_data_is_not_empty
+import asyncio
+import logging
 
 Message = Dict[str, str]
 
