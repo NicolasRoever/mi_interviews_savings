@@ -17,6 +17,51 @@ class CallPlan:
     per_request_timeout_s: float
 
 
+async def call_openai_responses_hedged(
+    client: AsyncOpenAI,
+    *,
+    prompt: str,
+    primary_model: str = "gpt-5-nano-2025-08-07",
+    fallback_model: str = "gpt-4o-mini-2024-07-18",
+    hedge_delay_s: float = 2.0,
+    max_output_tokens: int = 200,
+    reasoning_effort: str = "minimal",
+    per_request_timeout_s: float = 12.0,
+) -> Tuple[str, Any, CallPlan]:
+    """
+    Run primary immediately and fallback after hedge_delay_s.
+    Return the first result. (race_first handles cancellations.)
+    """
+    plans = [
+        CallPlan(
+            0.0,
+            primary_model,
+            max_output_tokens,
+            reasoning_effort,
+            per_request_timeout_s,
+        ),
+        CallPlan(
+            hedge_delay_s,
+            fallback_model,
+            max_output_tokens,
+            reasoning_effort,
+            per_request_timeout_s,
+        ),
+    ]
+
+    tasks = [asyncio.create_task(openai_call(client, prompt, plan)) for plan in plans]
+
+    text, resp, plan, elapsed = await race_first(tasks)
+
+    logging.info(
+        "Winner model=%s (delay=%.2fs, elapsed=%.3fs)",
+        plan.model,
+        plan.delay_s,
+        elapsed,
+    )
+    return text, resp, plan
+
+
 async def openai_call(
     client: AsyncOpenAI, prompt: str, plan: CallPlan
 ) -> Tuple[str, Any, CallPlan, float]:
@@ -30,13 +75,18 @@ async def openai_call(
     start = time.perf_counter()
     logging.info("Starting call model=%s (delay=%.2fs)", plan.model, plan.delay_s)
 
+    kwargs = {
+        "model": plan.model,
+        "input": prompt,
+        "max_output_tokens": plan.max_output_tokens,
+    }
+
+    # Only send reasoning if the model name does NOT contain "4"
+    if "4" not in plan.model:
+        kwargs["reasoning"] = {"effort": plan.reasoning_effort}
+
     resp = await asyncio.wait_for(
-        client.responses.create(
-            model=plan.model,
-            input=prompt,
-            reasoning={"effort": plan.reasoning_effort},
-            max_output_tokens=plan.max_output_tokens,
-        ),
+        client.responses.create(**kwargs),
         timeout=plan.per_request_timeout_s,
     )
 
@@ -83,47 +133,3 @@ async def race_first(tasks: List["asyncio.Task"]) -> Tuple[str, Any, CallPlan, f
     if first_error is not None:
         raise first_error
     raise RuntimeError("Hedge race ended with no tasks (unexpected).")
-
-
-async def call_openai_responses_hedged(
-    client: AsyncOpenAI,
-    *,
-    prompt: str,
-    primary_model: str = "gpt-5-nano-2025-08-07",
-    fallback_model: str = "gpt-5-nano-2025-08-07",
-    hedge_delay_s: float = 2.0,
-    max_output_tokens: int = 200,
-    reasoning_effort: str = "minimal",
-    per_request_timeout_s: float = 12.0,
-) -> Tuple[str, Any, CallPlan]:
-    """
-    Run primary immediately and fallback after hedge_delay_s.
-    Return the first result. (race_first handles cancellations.)
-    """
-    plans = [
-        CallPlan(
-            0.0,
-            primary_model,
-            max_output_tokens,
-            reasoning_effort,
-            per_request_timeout_s,
-        ),
-        CallPlan(
-            hedge_delay_s,
-            fallback_model,
-            max_output_tokens,
-            reasoning_effort,
-            per_request_timeout_s,
-        ),
-    ]
-
-    tasks = [asyncio.create_task(openai_call(client, prompt, plan)) for plan in plans]
-    text, resp, plan, elapsed = await race_first(tasks)
-
-    logging.info(
-        "Winner model=%s (delay=%.2fs, elapsed=%.3fs)",
-        plan.model,
-        plan.delay_s,
-        elapsed,
-    )
-    return text, resp, plan

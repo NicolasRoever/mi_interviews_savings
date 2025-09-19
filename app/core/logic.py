@@ -7,6 +7,7 @@ from database.dynamo import DynamoDB
 from typing import Union
 from database.file import FileWriter
 import threading
+import asyncio
 
 
 # ------------ Main Interview Logic Function -------------#
@@ -56,9 +57,7 @@ def next_question(
         message=user_message, type="answer"
     )  # TODO Here, type annotations are not super clear yet. The reason is that the flow structure is not so nice
 
-    next_question = await agent.execute_query_v002_async(
-        interview_manager=interview_manager
-    )
+    next_question = agent.execute_query_v002_auto(interview_manager=interview_manager)
 
     interview_manager.add_chat_to_session(message=next_question, type="question")
     interview_manager.update_parameters_after_question(

@@ -7,7 +7,7 @@ from core.manager import InterviewManager
 from core.agent import LLMAgent
 from database.dynamo import DynamoDB, connect_to_database
 from parameters import INTERVIEW_PARAMETERS, OPENAI_API_KEY
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 
 
 # ------------ Global Variables Initiated on Cold Start -------------#
@@ -25,7 +25,7 @@ def _resp(status: int, body: dict) -> dict:
 
 
 db = connect_to_database()
-openai_client = OpenAI(api_key=OPENAI_API_KEY, timeout=45, max_retries=3)
+openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY, timeout=45, max_retries=3)
 agent = LLMAgent(openai_client=openai_client)
 
 
