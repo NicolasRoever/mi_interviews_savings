@@ -52,9 +52,6 @@ def next_question(
 
     else:
         interview_manager.resume_session(parameters=params)
-        logging.info(
-            f"Interview Manager State after resume: {interview_manager.current_state}"
-        )
 
     interview_manager.add_chat_to_session(
         message=user_message, type="answer"
@@ -63,9 +60,6 @@ def next_question(
     next_question = agent.execute_query_v002_auto(interview_manager=interview_manager)
 
     interview_manager.add_chat_to_session(message=next_question, type="question")
-    logging.info(
-        f"Interview Manager State after AI response: {interview_manager.current_state}"
-    )
     interview_manager.update_parameters_after_question(
         question_name=interview_manager.current_state["question_name"]
     )
@@ -73,10 +67,6 @@ def next_question(
     # Check if this was the last question
     if interview_manager.current_state["question_name"] == "last_question":
         return {"session_id": session_id, "message": params["termination_message"]}
-
-    logging.info(
-        f"Interview Manager State before sending question: {interview_manager.current_state}"
-    )
 
     return {"session_id": session_id, "message": next_question}
 

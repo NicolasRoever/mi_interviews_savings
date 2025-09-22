@@ -4,6 +4,7 @@ from typing import Any, Dict, Callable, Optional, Union
 from database.dynamo import DynamoDB
 from database.file import FileWriter
 import time
+from decimal import Decimal
 
 from core.auxiliary import get_step_by_question_name
 
@@ -160,5 +161,5 @@ class InterviewManager(object):
                 "current_state missing or not a dict; skipping set_open_ai_time"
             )
             return False
-        self.current_state["open_ai_time"] = float(seconds)
+        self.current_state["open_ai_time"] = Decimal(str(seconds))
         return True
