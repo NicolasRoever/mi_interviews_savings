@@ -75,5 +75,6 @@ class LLMAgent(object):
         )
 
         logging.info("LLM full response (winner=%s): %s", plan.model, full_response)
+        interview_manager.set_open_ai_time(elapsed)
 
         return text
