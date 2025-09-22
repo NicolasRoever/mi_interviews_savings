@@ -119,6 +119,6 @@ def _warm_openai(agent: LLMAgent) -> None:
                 "first_ai_question_name": "warmup",
             }
         )
-        agent.execute_query_v002(manager)
+        agent.execute_query_v002_auto(manager)
     except Exception:
         pass
