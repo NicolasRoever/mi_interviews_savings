@@ -12,7 +12,7 @@ def delete_all_sessions(table_name: str, limit: Optional[int] = None) -> None:
     Delete all entries in a DynamoDB table.
 
     Args:
-        table_name (str): Name of the DynamoDB table.
+        table_name (str): Name of the DynamoDB table (interview-sessions)
         limit (Optional[int]): Maximum number of items to delete (for testing).
     """
     table = resource("dynamodb").Table(table_name)
@@ -41,3 +41,21 @@ def delete_all_sessions(table_name: str, limit: Optional[int] = None) -> None:
         last_eval = response["LastEvaluatedKey"]
 
     logging.info(f"Deleted {deleted_count} items from table '{table_name}'.")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+    parser = ArgumentParser(description="Delete all sessions from DynamoDB table")
+    parser.add_argument(
+        "--table_name", type=str, required=True, help="Name of the DynamoDB table"
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="Maximum number of items to delete (for testing)",
+    )
+    args = parser.parse_args()
+
+    delete_all_sessions(table_name=args.table_name, limit=args.limit)
