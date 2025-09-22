@@ -37,10 +37,10 @@ class InterviewManager(object):
             "summary": "",  # running summary
             "type": "question",  # question or answer
             "content": None,  # content
+            "open_ai_time": 0,  # time taken for last AI response
             "question_name": parameters.get(
                 "first_ai_question_name"
             ),  # name of the last question asked
-            "open_ai_time": None,  # time taken for last AI response
         }
         self.parameters = parameters
 
@@ -148,3 +148,17 @@ class InterviewManager(object):
     def update_probe(self):
         """Having probed within topic, simply increment question counter."""
         self.current_state["question_idx"] += 1
+
+    def set_open_ai_time(self, seconds: float) -> bool:
+        """
+        Set the elapsed OpenAI time on the current state if available.
+        Returns True if the value was set, False otherwise.
+        """
+        state = getattr(self, "current_state", None)
+        if not isinstance(state, dict):
+            logging.debug(
+                "current_state missing or not a dict; skipping set_open_ai_time"
+            )
+            return False
+        self.current_state["open_ai_time"] = float(seconds)
+        return True
