@@ -27,7 +27,7 @@ async def call_openai_responses_hedged(
     max_output_tokens: int = 200,
     reasoning_effort: str = "minimal",
     per_request_timeout_s: float = 12.0,
-) -> Tuple[str, Any, CallPlan]:
+) -> Tuple[str, Any, CallPlan, float]:
     """
     Run primary immediately and fallback after hedge_delay_s.
     Return the first result. (race_first handles cancellations.)
@@ -59,7 +59,7 @@ async def call_openai_responses_hedged(
         plan.delay_s,
         elapsed,
     )
-    return text, resp, plan
+    return text, resp, plan, elapsed
 
 
 async def openai_call(

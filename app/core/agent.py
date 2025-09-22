@@ -40,6 +40,48 @@ class LLMAgent(object):
         else:
             return self.execute_query_v002_async(interview_manager)
 
+    async def execute_query_v002_async(self, interview_manager) -> str:
+        """
+        Async entry point with hedged OpenAI call.
+        """
+        current_question = interview_manager.current_state["question_name"]
+        logging.info("Current question is: %s", current_question)
+
+        step = get_step_by_question_name(
+            parameters=interview_manager.parameters,
+            question_name=current_question,
+        )
+        check_data_is_not_empty(data=step, name="Data for current question step")
+
+        logging.info("Step data: %s", step)
+
+        prompt = fill_prompt_with_interview_v002(
+            step=step,
+            global_prompt=interview_manager.parameters["global_mi_system_prompt"],
+            history=interview_manager.history,
+            history_indices=step.get("history_indices"),
+            include_global_prompt=step.get("include_global_prompt", True),
+        )
+
+        text, full_response, plan, elapsed = await call_openai_responses_hedged(
+            client=self.client,
+            prompt=prompt,
+            primary_model=step.get("model", "gpt-5-nano-2025-08-07"),
+            fallback_model=step.get("fallback_model", "gpt-4o-mini"),
+            hedge_delay_s=step.get("hedge_delay_s", 2.0),
+            max_output_tokens=step.get("max_output_tokens", 200),
+            reasoning_effort=step.get("reasoning_effort", "minimal"),
+            per_request_timeout_s=step.get("per_request_timeout_s", 12.0),
+        )
+
+        logging.info("LLM full response (winner=%s): %s", plan.model, full_response)
+
+        return text
+
+    # ----------------------------------------------------------------------
+    # The function below is the synchronous version of the above async function.
+    # ----------------------------------------------------------------------
+
     def execute_query_v002(self, interview_manager) -> str:
         """
         We simply need a function analogous to llm_step in my setup. This constructs the prompt using the information stored in the interview manager class.
@@ -73,42 +115,4 @@ class LLMAgent(object):
 
         logging.info(f"LLM full response: {full_response}")
 
-        return text
-
-    async def execute_query_v002_async(self, interview_manager) -> str:
-        """
-        Async entry point with hedged OpenAI call.
-        """
-        current_question = interview_manager.current_state["question_name"]
-        logging.info("Current question is: %s", current_question)
-
-        step = get_step_by_question_name(
-            parameters=interview_manager.parameters,
-            question_name=current_question,
-        )
-        check_data_is_not_empty(data=step, name="Data for current question step")
-
-        logging.info("Step data: %s", step)
-        logging.info("History: %s", interview_manager.history)
-
-        prompt = fill_prompt_with_interview_v002(
-            step=step,
-            global_prompt=interview_manager.parameters["global_mi_system_prompt"],
-            history=interview_manager.history,
-            history_indices=step.get("history_indices"),
-            include_global_prompt=step.get("include_global_prompt", True),
-        )
-
-        text, full_response, plan = await call_openai_responses_hedged(
-            client=self.client,
-            prompt=prompt,
-            primary_model=step.get("model", "gpt-5-nano-2025-08-07"),
-            fallback_model=step.get("fallback_model", "gpt-4o-mini"),
-            hedge_delay_s=step.get("hedge_delay_s", 2.0),
-            max_output_tokens=step.get("max_output_tokens", 200),
-            reasoning_effort=step.get("reasoning_effort", "minimal"),
-            per_request_timeout_s=step.get("per_request_timeout_s", 12.0),
-        )
-
-        logging.info("LLM full response (winner=%s): %s", plan.model, full_response)
         return text

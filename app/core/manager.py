@@ -40,6 +40,7 @@ class InterviewManager(object):
             "question_name": parameters.get(
                 "first_ai_question_name"
             ),  # name of the last question asked
+            "open_ai_time": None,  # time taken for last AI response
         }
         self.parameters = parameters
 
