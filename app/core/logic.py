@@ -57,16 +57,16 @@ def next_question(
         message=user_message, type="answer"
     )  # TODO Here, type annotations are not super clear yet. The reason is that the flow structure is not so nice
 
+    # Check if this was the last question
+    if interview_manager.current_state["question_name"] == "last_question":
+        return {"session_id": session_id, "message": params["termination_message"]}
+
     next_question = agent.execute_query_v002_auto(interview_manager=interview_manager)
 
     interview_manager.add_chat_to_session(message=next_question, type="question")
     interview_manager.update_parameters_after_question(
         question_name=interview_manager.current_state["question_name"]
     )
-
-    # Check if this was the last question
-    if interview_manager.current_state["question_name"] == "last_question":
-        return {"session_id": session_id, "message": params["termination_message"]}
 
     return {"session_id": session_id, "message": next_question}
 
