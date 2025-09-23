@@ -39,7 +39,7 @@ def retrieve_all_sessions(table_name: str, output_path: str, print_chats: bool =
 
     # Save to specified CSV output filepath
     with open(output_path, "w") as csvfile:
-        writer = DictWriter(csvfile, fieldnames=all_interview_chats[0].keys())
+        writer = DictWriter(csvfile, fieldnames=all_interview_chats[300].keys())
         writer.writeheader()
         writer.writerows(all_interview_chats)
 
