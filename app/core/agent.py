@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from core.auxiliary import (
     fill_prompt_with_interview_v002,
     get_step_by_question_name,

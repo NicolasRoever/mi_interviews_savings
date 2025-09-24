@@ -53,12 +53,6 @@ async def call_openai_responses_hedged(
 
     text, resp, plan, elapsed = await race_first(tasks)
 
-    logging.info(
-        "Winner model=%s (delay=%.2fs, elapsed=%.3fs)",
-        plan.model,
-        plan.delay_s,
-        elapsed,
-    )
     return text, resp, plan, elapsed
 
 
@@ -73,7 +67,6 @@ async def openai_call(
         await asyncio.sleep(plan.delay_s)
 
     start = time.perf_counter()
-    logging.info("Starting call model=%s (delay=%.2fs)", plan.model, plan.delay_s)
 
     kwargs = {
         "model": plan.model,
