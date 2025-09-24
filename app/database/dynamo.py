@@ -22,27 +22,22 @@ class DynamoDB(object):
         """
         Initialize the Dynamo database table.
         """
-        logging.info(f"Setting up DynamoDB for table '{table_name}'")
         self.table = resource("dynamodb").Table(table_name)
-        logging.info("DynamoDB table connection established. Should happen only once!")
 
     def load_remote_session(self, session_id: str) -> list:
         """Retrieve the interview session data from the database."""
         result = self.table.get_item(Key={"session_id": session_id})
         if result.get("Item"):
             return result["Item"]["session"]
-        logging.warning(f"Can't load session '{session_id}': not started!")
         return {}
 
     def delete_remote_session(self, session_id: str):
         """Delete session data from the database."""
         self.table.delete_item(Key={"session_id": session_id})
-        logging.info(f"Session '{session_id}' deleted!")
 
     def update_remote_session(self, session_id: str, session: list):
         """Update or insert session data in the database."""
         self.table.put_item(Item={"session_id": session_id, "session": session})
-        logging.info(f"Session '{session_id}' updated!")
 
     def retrieve_sessions(self, sessions: list = None) -> list:
         """
@@ -89,5 +84,4 @@ class DynamoDB(object):
                 break
             last_eval = resp["LastEvaluatedKey"]
 
-        logging.info(f"Retrieved {len(all_interview_chats)} messages!")
         return all_interview_chats
