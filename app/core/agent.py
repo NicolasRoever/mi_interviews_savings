@@ -10,6 +10,7 @@ from core.asynchronous_call import openai_call, CallPlan, call_openai_responses_
 from io import BytesIO
 from base64 import b64decode
 from openai import OpenAI, AsyncOpenAI
+import logging
 
 
 class LLMAgent(object):
@@ -22,15 +23,32 @@ class LLMAgent(object):
         """Load interview guidelines for prompt construction."""
         self.parameters = parameters
 
-    def transcribe(self, audio) -> str:
+    async def transcribe(self, audio) -> str:
         """Transcribe audio file."""
-        audio_file = BytesIO(b64decode(audio))
-        audio_file.name = "audio.webm"
+        logging.info("Starting transcription...")
 
-        response = self.client.audio.transcriptions.create(
-            model="whisper-1", file=audio_file, language="en"  # English language input
-        )
-        return response.text
+        try:
+            logging.info("Decoding base64 audio...")
+            audio_bytes = b64decode(audio)
+            logging.info(f"Decoded audio length: {len(audio_bytes)} bytes")
+
+            audio_file = BytesIO(audio_bytes)
+            audio_file.name = "audio.webm"
+            logging.info(f"Audio file created with name: {audio_file.name}")
+
+            logging.info("Sending audio to OpenAI Whisper API...")
+            response = await self.client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                language="en",  # English language input
+            )
+
+            logging.info("Received response from Whisper API.")
+            logging.info(f"Full response: {response}")
+
+            return response.text
+        except Exception as e:
+            logging.error("Error occurred during transcription", exc_info=True)
 
     def execute_query_v002_auto(self, interview_manager):
         try:

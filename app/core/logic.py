@@ -121,25 +121,19 @@ def begin_interview_session(
     interview_manager.begin_session(parameters=parameters)
     message = parameters["first_question"]
     interview_manager.add_chat_to_session(message, type="question")
-    logging.info(
-        "Beginning {} interview session '{}' with prompt '{}'".format(
-            interview_id, session_id, message
-        )
-    )
     return {"session_id": session_id, "interview_id": interview_id, "message": message}
 
 
 def transcribe(audio: str, agent: LLMAgent) -> dict:
     """Return audio file transcription using OpenAI Whisper API"""
     logging.critical(f"Audio is: {type(audio)}...")
-    transcription = agent.transcribe(audio)
-    logging.info(f"Returning transcription text: '{transcription}'")
+    transcription = asyncio.run(agent.transcribe(audio))
+
     return {"transcription": transcription}
 
 
 def _warm_openai(agent: LLMAgent) -> None:
     """Warm the OpenAI client to hide cold-start latency."""
-    logging.info("Warming OpenAI client...")
     try:
         manager = InterviewManager(db=None, session_id="warmup")
         manager.begin_session(

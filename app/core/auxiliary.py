@@ -6,7 +6,6 @@ from typing import List, Dict, TypedDict, Iterable, Any, Optional
 from decimal import Decimal
 from datetime import datetime
 import json
-import logging
 from typing import Any, Dict, Tuple
 from openai import (
     APIStatusError,
@@ -22,7 +21,6 @@ from core.error_handling import (
     _assert_is_str,
 )
 import asyncio
-import logging
 from pydantic import validate_arguments
 
 Message = Dict[str, str]
