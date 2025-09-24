@@ -121,8 +121,6 @@ def fill_prompt_with_interview_v002(
 
     prompt = "\n\n".join(prompt_parts)
 
-    logging.info(f"Prompt to GPT:\n{prompt}")
-
     return prompt
 
 
@@ -164,7 +162,6 @@ def call_openai_responses(
         )
         text = (getattr(resp, "output_text", None) or "").strip()
         elapsed = time.perf_counter() - start
-        logging.info("OpenAI call completed in %.3f seconds", elapsed)
         logging.debug("OpenAI raw response: %s", resp)
         return text, resp
 

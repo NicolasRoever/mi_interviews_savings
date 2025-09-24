@@ -46,15 +46,12 @@ class LLMAgent(object):
         Async entry point with hedged OpenAI call.
         """
         current_question = interview_manager.current_state["question_name"]
-        logging.info("Current question is: %s", current_question)
 
         step = get_step_by_question_name(
             parameters=interview_manager.parameters,
             question_name=current_question,
         )
         check_data_is_not_empty(data=step, name="Data for current question step")
-
-        logging.info("Step data: %s", step)
 
         prompt = fill_prompt_with_interview_v002(
             step=step,
@@ -75,7 +72,6 @@ class LLMAgent(object):
             per_request_timeout_s=step.get("per_request_timeout_s", 12.0),
         )
 
-        logging.info("LLM full response (winner=%s): %s", plan.model, full_response)
         interview_manager.set_open_ai_time(elapsed)
 
         answer = apply_fallback_if_needed(text=text, step=step)

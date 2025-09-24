@@ -8,6 +8,8 @@ from typing import Union
 from database.file import FileWriter
 import threading
 import asyncio
+from typing import Optional, Mapping, Any, Protocol, Callable, Dict, runtime_checkable
+from pydantic import validate_arguments
 
 
 # ------------ Main Interview Logic Function -------------#
@@ -36,19 +38,18 @@ def next_question(
     agent.parameters = params
 
     # Check if we need to begin a new session
-    has_history = bool(db.load_remote_session(session_id))
-    if has_history is False:
-        threading.Thread(
-            target=_warm_openai,
-            kwargs={"agent": agent},
-            daemon=True,  # won't block process exit
-        ).start()
-        return begin_interview_session(
-            session_id=session_id,
-            interview_id=interview_id,
-            interview_manager=interview_manager,
-            parameters=params,
-        )
+    maybe_payload = maybe_begin_session(
+        session_id=session_id,
+        interview_id=interview_id,
+        db=db,
+        agent=agent,
+        interview_manager=interview_manager,
+        parameters=params,
+        begin_interview_session=begin_interview_session,
+        warm_target=_warm_openai,  # your existing warmup function
+    )
+    if maybe_payload is not None:
+        return maybe_payload
 
     else:
         interview_manager.resume_session(parameters=params)
@@ -72,6 +73,42 @@ def next_question(
 
 
 # ------------ Helper Functions -------------#
+
+
+@validate_arguments
+def maybe_begin_session(
+    session_id: str,
+    interview_id: str,
+    db: Any,
+    agent: Any,
+    interview_manager: Any,
+    parameters: Mapping[str, Any],
+    begin_interview_session: Any,
+    warm_target: Any,
+) -> Dict[str, str] | None:
+    """
+    If no prior session exists, warm the agent asynchronously and start the interview.
+    Otherwise, return None.
+
+    Returns:
+        dict with {"session_id": ..., "message": ...} when a new session begins, else None.
+    """
+    has_history = bool(db.load_remote_session(session_id))
+    if has_history:
+        return None
+
+    threading.Thread(
+        target=warm_target,
+        kwargs={"agent": agent},
+        daemon=True,
+    ).start()
+
+    return begin_interview_session(
+        session_id=session_id,
+        interview_id=interview_id,
+        interview_manager=interview_manager,
+        parameters=parameters,
+    )
 
 
 def begin_interview_session(

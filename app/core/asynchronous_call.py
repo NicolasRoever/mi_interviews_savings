@@ -92,7 +92,6 @@ async def openai_call(
 
     text = (getattr(resp, "output_text", None) or "").strip()
     elapsed = time.perf_counter() - start
-    logging.info("Completed model=%s in %.3fs", plan.model, elapsed)
     return text, resp, plan, elapsed
 
 
