@@ -4,6 +4,7 @@ from core.auxiliary import (
     fill_prompt_with_interview_v002,
     get_step_by_question_name,
     call_openai_responses,
+    apply_fallback_if_needed,
 )
 from core.error_handling import check_data_is_not_empty
 from core.asynchronous_call import openai_call, CallPlan, call_openai_responses_hedged
@@ -77,4 +78,6 @@ class LLMAgent(object):
         logging.info("LLM full response (winner=%s): %s", plan.model, full_response)
         interview_manager.set_open_ai_time(elapsed)
 
-        return text
+        answer = apply_fallback_if_needed(text=text, step=step)
+
+        return answer

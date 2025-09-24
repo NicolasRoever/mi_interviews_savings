@@ -30,3 +30,20 @@ def handle_openai_error(e: Exception) -> None:
         logging.error("OpenAI unexpected error: %s", e)
 
     raise e
+
+
+def _assert_is_str(value: any, var_name: str = "value"):
+    """
+    Ensure `value` is a Python str. If so, return it.
+    Otherwise, raise TypeError with details.
+
+    :param value: object to check
+    :param var_name: name of the variable (for the error message)
+    :return: the same value (typed as str)
+    :raises TypeError: if value is not a str
+    """
+    if not isinstance(value, str):
+        # You can include repr(value) or type info:
+        raise TypeError(
+            f"Expected `{var_name}` to be str, got {type(value).__name__!r} instead (value={value!r})"
+        )

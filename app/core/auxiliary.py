@@ -16,9 +16,14 @@ from openai import (
     AsyncOpenAI,
 )
 from dataclasses import dataclass
-from core.error_handling import handle_openai_error, check_data_is_not_empty
+from core.error_handling import (
+    handle_openai_error,
+    check_data_is_not_empty,
+    _assert_is_str,
+)
 import asyncio
 import logging
+from pydantic import validate_arguments
 
 Message = Dict[str, str]
 
@@ -99,8 +104,8 @@ def fill_prompt_with_interview_v002(
     - Insert interview history messages (user + assistant turns).
     - Append the current step's instructions as a system message.
     """
-    logging.info(f"Step data is: {step}")
-    logging.info(f"History data is: {history}")
+    _assert_is_str(global_prompt, "global_prompt")
+
     if history_indices:
         history_for_prompt = chat_to_string_v002(
             history, history_indices=history_indices
@@ -175,3 +180,17 @@ def _preview(val: Any, limit: int = 600) -> str:
         return (s[:limit] + "…") if len(s) > limit else s
     except Exception:
         return f"<{type(val).__name__}>"
+
+
+@validate_arguments
+def apply_fallback_if_needed(text: str, step: dict) -> str:
+    """
+    Apply fallback replacement if regex matches.
+    """
+    regex_pattern: str | None = step.get("fallback_regex")
+    fallback_phrase: str = step.get("fallback_phrase", "Default fallback response")
+
+    if regex_pattern and re.search(regex_pattern, text):
+        logging.info("Regex '%s' matched. Using fallback phrase.", regex_pattern)
+        return fallback_phrase
+    return text
