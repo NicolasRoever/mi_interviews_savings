@@ -4,8 +4,8 @@ from openai import AsyncOpenAI
 import asyncio
 import time
 import logging
-from core.auxiliary import fill_prompt_with_interview_v002, get_step_by_question_name
-from core.error_handling import check_data_is_not_empty
+from .auxiliary import fill_prompt_with_interview_v002, get_step_by_question_name
+from .error_handling import check_data_is_not_empty, _ensure_response_not_empty
 
 
 @dataclass(frozen=True)
@@ -52,6 +52,10 @@ async def call_openai_responses_hedged(
     tasks = [asyncio.create_task(openai_call(client, prompt, plan)) for plan in plans]
 
     text, resp, plan, elapsed = await race_first(tasks)
+
+    _ensure_response_not_empty(
+        text=text, context="OpenAI call", metadata={"model": plan.model}
+    )
 
     return text, resp, plan, elapsed
 

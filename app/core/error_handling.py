@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping
 from openai import APIStatusError, AuthenticationError, APIConnectionError
 
 
@@ -47,3 +47,13 @@ def _assert_is_str(value: any, var_name: str = "value"):
         raise TypeError(
             f"Expected `{var_name}` to be str, got {type(value).__name__!r} instead (value={value!r})"
         )
+
+
+def _ensure_response_not_empty(
+    text: str | None,
+    *,
+    context: str,
+    metadata: Mapping[str, Any] | None = None,
+) -> None:
+    if not text:
+        logging.error("Empty response from %s. Metadata: %s", context, metadata)
