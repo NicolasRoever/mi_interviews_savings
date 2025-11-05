@@ -238,3 +238,27 @@ If no specific `session_id`'s are provided, the endpoint will return all intervi
 python aws_retrieve.py --table_name=interview-sessions --output_path=DESIRED_PATH_TO_DATA.csv
 ```
 
+
+
+## Notes NR: 
+
+QUickstart of the Application: 
+
+1. 
+```bash
+./aws_setup.sh <AWS_PUBLIC_ACCESS_KEY> <AWS_SECRET_ACCESS_KEY> <AWS_REGION> <S3_BUCKET>
+```
+supplying your keys, your region (e.g. `eu-north-1`), and your chosen bucket name (e.g. `my-bucket`). Bucket name is found under amazon s3. 
+) which will configure your command line AWS credentials, create an AWS S3 storage bucket where build template will be stored, and create an AWS Dynamo database table (by default named `interview-sessions`) to persistently store interviews sessions (in the Cloud). This has to be run just once!
+
+- Make sure docker is running on your mac
+
+2. then 
+
+```bash 
+./aws_deploy.sh <S3_BUCKET>
+```
+
+
+3. 
+Error Handling is at cloudwatch/ protokollgruppen
