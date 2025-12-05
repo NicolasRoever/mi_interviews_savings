@@ -97,7 +97,7 @@ def llm_step(
     resp = client.chat.completions.create(
         model=model,
         messages=messages,
-        reasoning_effort="minimal",
+        reasoning_effort="none",
         max_completion_tokens=step.get("max_completion_tokens", 300),
     )
     draft = _extract_content(resp)
@@ -169,7 +169,7 @@ def openai_generate_mi_turn(
         print("----------------------\n")
 
     resp = client.chat.completions.create(
-        model=model, messages=messages, reasoning_effort="minimal"
+        model=model, messages=messages, reasoning_effort="none"
     )
 
     print("\n--- OpenAI Response ---")

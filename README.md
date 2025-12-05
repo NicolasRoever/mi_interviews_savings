@@ -257,5 +257,5 @@ Rest is in your own notes
 3. Delploy bucket
 
 ```bash
-./aws_deploy.sh <S3_BUCKET>
+./aws_deploy.sh mi-interviews-v010
 ```

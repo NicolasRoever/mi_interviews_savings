@@ -85,7 +85,7 @@ class LLMAgent(object):
             fallback_model=step.get("fallback_model", "gpt-4o-mini"),
             hedge_delay_s=step.get("hedge_delay_s", 2.0),
             max_output_tokens=step.get("max_output_tokens", 200),
-            reasoning_effort=step.get("reasoning_effort", "minimal"),
+            reasoning_effort=step.get("reasoning_effort", "none"),
             per_request_timeout_s=step.get("per_request_timeout_s", 12.0),
         )
 
