@@ -238,3 +238,24 @@ If no specific `session_id`'s are provided, the endpoint will return all intervi
 python aws_retrieve.py --table_name=interview-sessions --output_path=DESIRED_PATH_TO_DATA.csv
 ```
 
+
+
+## Notes for NR
+
+1. Open Docker
+
+2. Setup bucket
+
+```bash
+./aws_setup.sh <AWS_PUBLIC_ACCESS_KEY> <AWS_SECRET_ACCESS_KEY> <AWS_REGION> <S3_BUCKET>
+```
+
+region: `eu-north-1`, 
+bucker name: `mi-interviews-v010`, 
+Rest is in your own notes 
+
+3. Delploy bucket
+
+```bash
+./aws_deploy.sh <S3_BUCKET>
+```

@@ -82,10 +82,15 @@ async def openai_call(
     if "4" not in plan.model:
         kwargs["reasoning"] = {"effort": plan.reasoning_effort}
 
-    resp = await asyncio.wait_for(
-        client.responses.create(**kwargs),
-        timeout=plan.per_request_timeout_s,
-    )
+    try:
+        resp = await asyncio.wait_for(
+            client.responses.create(**kwargs),
+            timeout=plan.per_request_timeout_s,
+        )
+    except asyncio.TimeoutError as exc:  # pragma: no cover - network timing
+        raise asyncio.TimeoutError(
+            f"{plan.model} timed out after {plan.per_request_timeout_s}s"
+        ) from exc
 
     text = (getattr(resp, "output_text", None) or "").strip()
     elapsed = time.perf_counter() - start
