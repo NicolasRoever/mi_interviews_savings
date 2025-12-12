@@ -81,7 +81,7 @@ class LLMAgent(object):
         text, full_response, plan, elapsed = await call_openai_responses_hedged(
             client=self.client,
             prompt=prompt,
-            primary_model=step.get("model", "gpt-5-nano-2025-08-07"),
+            primary_model=step.get("model", "gpt-5.2-2025-12-11"),
             fallback_model=step.get("fallback_model", "gpt-4o-mini"),
             hedge_delay_s=step.get("hedge_delay_s", 2.0),
             max_output_tokens=step.get("max_output_tokens", 200),
