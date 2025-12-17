@@ -24,7 +24,7 @@ async def call_openai_responses_hedged(
     primary_model: str = "gpt-5-nano-2025-08-07",
     fallback_model: str = "gpt-4o-mini-2024-07-18",
     hedge_delay_s: float = 2.0,
-    max_output_tokens: int = 200,
+    max_output_tokens: int = 400,
     reasoning_effort: str = "none",
     per_request_timeout_s: float = 12.0,
 ) -> Tuple[str, Any, CallPlan, float]:

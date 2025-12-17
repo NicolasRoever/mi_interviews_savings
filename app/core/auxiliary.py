@@ -141,7 +141,7 @@ def call_openai_responses(
     *,
     prompt: str,
     model: str = "gpt-4o-mini",
-    max_output_tokens: int = 200,
+    max_output_tokens: int = 400,
     reasoning_effort: str = "none",
 ) -> Tuple[str, Any]:
     """
